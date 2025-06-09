@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личные финансы</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #5e72e4;
+            --success-color: #2dce89;
+            --danger-color: #f5365c;
+            --warning-color: #fb6340;
+            --info-color: #11cdef;
+            --dark: #32325d;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .navbar {
+            background: linear-gradient(87deg, #5e72e4 0, #825ee4 100%);
+            box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+        }
+
+        .navbar-brand {
+            color: white !important;
+            font-weight: 600;
+        }
+
+        .card {
+            border: 0;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(50, 50, 93, .1), 0 3px 6px rgba(0, 0, 0, .08);
+        }
+
+        .stat-card {
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card .icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #4c63d2;
+            border-color: #4c63d2;
+        }
+
+        .transaction-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s;
+        }
+
+        .transaction-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .amount-expense {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        .amount-income {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .amount-transfer {
+            color: var(--info-color);
+            font-weight: 600;
+        }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 1rem;
+        }
+
+        .budget-progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .budget-progress-bar {
+            height: 100%;
+            transition: width 0.6s ease;
+        }
+
+        .tab-content {
+            padding-top: 2rem;
+        }
+
+        .floating-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+
+        .modal-header {
+            background: linear-gradient(87deg, #5e72e4 0, #825ee4 100%);
+            color: white;
+        }
+
+        .modal-header .btn-close {
+            filter: invert(1);
+        }
+
+        #loadingSpinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="d-none">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+    </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <i class="bi bi-wallet2"></i> Мои финансы
+        </a>
+        <div class="ms-auto">
+                <span class="navbar-text text-white">
+                    <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
+                </span>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container-fluid mt-4">
+    <!-- Stats Row -->
+    <div class="row" id="statsRow">
+        <!-- Stats will be loaded here -->
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard"
+                    type="button">
+                <i class="bi bi-speedometer2"></i> Обзор
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions"
+                    type="button">
+                <i class="bi bi-list-ul"></i> Транзакции
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="budgets-tab" data-bs-toggle="tab" data-bs-target="#budgets" type="button">
+                <i class="bi bi-piggy-bank"></i> Бюджеты
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button">
+                <i class="bi bi-graph-up"></i> Аналитика
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button">
+                <i class="bi bi-gear"></i> Настройки
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="mainTabContent">
+        <!-- Dashboard Tab -->
+        <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Расходы за последние 30 дней</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="expenseChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Топ категорий</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Последние транзакции</h5>
+                        </div>
+                        <div class="card-body" id="recentTransactions">
+                            <!-- Recent transactions will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Tab -->
+        <div class="tab-pane fade" id="transactions" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Все транзакции</h5>
+                    <div>
+                        <select class="form-select form-select-sm d-inline-block w-auto" id="transactionFilter">
+                            <option value="">Все типы</option>
+                            <option value="expense">Расходы</option>
+                            <option value="income">Доходы</option>
+                            <option value="transfer">Переводы</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body" id="allTransactions">
+                    <!-- All transactions will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Budgets Tab -->
+        <div class="tab-pane fade" id="budgets" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Бюджеты</h5>
+                <button class="btn btn-sm btn-primary" onclick="showAddBudgetModal()">
+                    <i class="bi bi-plus-circle"></i> Добавить бюджет
+                </button>
+            </div>
+            <div class="row" id="budgetsList">
+                <!-- Budgets will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div class="tab-pane fade" id="analytics" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Тренд доходов и расходов</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Структура расходов</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="categoryAnalytics">
+                                <!-- Category analytics will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-pane fade" id="settings" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Счета</h5>
+                        </div>
+                        <div class="card-body" id="accountsList">
+                            <!-- Accounts will be loaded here -->
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-primary" onclick="showAddAccountModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить счет
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Категории</h5>
+                        </div>
+                        <div class="card-body" id="categoriesList">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-primary" onclick="showAddCategoryModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить категорию
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Add Transaction Button -->
+<button class="btn btn-primary btn-lg rounded-circle floating-btn" onclick="showAddTransactionModal()">
+    <i class="bi bi-plus-lg"></i>
+</button>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <span id="successMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить транзакцию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTransactionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Тип</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="transaction_type" id="typeExpense"
+                                   value="expense" checked>
+                            <label class="btn btn-outline-danger" for="typeExpense">Расход</label>
+
+                            <input type="radio" class="btn-check" name="transaction_type" id="typeIncome"
+                                   value="income">
+                            <label class="btn btn-outline-success" for="typeIncome">Доход</label>
+
+                            <input type="radio" class="btn-check" name="transaction_type" id="typeTransfer"
+                                   value="transfer">
+                            <label class="btn btn-outline-info" for="typeTransfer">Перевод</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сумма</label>
+                        <input type="number" class="form-control" id="amount" required min="0" step="0.01">
+                    </div>
+
+                    <div class="mb-3" id="accountFromGroup">
+                        <label class="form-label">Со счета</label>
+                        <select class="form-select" id="accountFrom" required>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3 d-none" id="accountToGroup">
+                        <label class="form-label">На счет</label>
+                        <select class="form-select" id="accountTo">
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="categoryGroup">
+                        <label class="form-label">Категория</label>
+                        <select class="form-select" id="category" required>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <input type="text" class="form-control" id="description">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Дата</label>
+                        <input type="date" class="form-control" id="date" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addTransaction()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить счет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAccountForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="accountName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Тип</label>
+                        <select class="form-select" id="accountType" required>
+                            <option value="cash">Наличные</option>
+                            <option value="debit_card">Дебетовая карта</option>
+                            <option value="credit_card">Кредитная карта</option>
+                            <option value="savings">Сберегательный счет</option>
+                            <option value="investment">Инвестиционный счет</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Начальный баланс</label>
+                        <input type="number" class="form-control" id="initialBalance" required min="0" step="0.01"
+                               value="0">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Иконка</label>
+                        <input type="text" class="form-control" id="accountIcon" placeholder="💳" maxlength="2">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Цвет</label>
+                        <input type="color" class="form-control form-control-color" id="accountColor" value="#5e72e4">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addAccount()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить категорию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="categoryName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Тип</label>
+                        <select class="form-select" id="categoryType" required>
+                            <option value="expense">Расход</option>
+                            <option value="income">Доход</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Родительская категория</label>
+                        <select class="form-select" id="parentCategory">
+                            <option value="">Нет (основная категория)</option>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Иконка</label>
+                        <input type="text" class="form-control" id="categoryIcon" placeholder="📁" maxlength="2">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Цвет</label>
+                        <input type="color" class="form-control form-control-color" id="categoryColor" value="#5e72e4">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addCategory()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Budget Modal -->
+<div class="modal fade" id="addBudgetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить бюджет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBudgetForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="budgetName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Категория</label>
+                        <select class="form-select" id="budgetCategory" required>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сумма</label>
+                        <input type="number" class="form-control" id="budgetAmount" required min="0" step="0.01">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Период</label>
+                        <select class="form-select" id="budgetPeriod" required>
+                            <option value="monthly">Месячный</option>
+                            <option value="weekly">Недельный</option>
+                            <option value="quarterly">Квартальный</option>
+                            <option value="yearly">Годовой</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addBudget()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // API Configuration
+    const API_URL = 'http://localhost:8000/api';
+
+    // Global variables
+    let accounts = [];
+    let categories = [];
+    let expenseChart = null;
+    let categoryChart = null;
+    let trendChart = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboard();
+        loadAccounts();
+        loadCategories();
+
+        // Set current date
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+
+        // Set default date in form
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Transaction type change handler
+        document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
+            radio.addEventListener('change', updateTransactionForm);
+        });
+
+        // Tab change handlers
+        document.getElementById('transactions-tab').addEventListener('click', loadTransactions);
+        document.getElementById('budgets-tab').addEventListener('click', loadBudgets);
+        document.getElementById('analytics-tab').addEventListener('click', loadAnalytics);
+        document.getElementById('settings-tab').addEventListener('click', () => {
+            loadAccounts();
+            loadCategories();
+        });
+
+        // Transaction filter
+        document.getElementById('transactionFilter').addEventListener('change', loadTransactions);
+    });
+
+    // Loading functions
+    async function loadDashboard() {
+        showLoading(true);
+        try {
+            // Load stats
+            const stats = await fetchAPI('/analytics/dashboard');
+            displayStats(stats);
+
+            // Load recent transactions
+            const transactions = await fetchAPI('/transactions?limit=5');
+            displayRecentTransactions(transactions);
+
+            // Load charts
+            await loadDashboardCharts();
+        } catch (error) {
+            showError('Ошибка загрузки данных');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function loadDashboardCharts() {
+        // Load expense chart data
+        const stats = await fetchAPI('/analytics/dashboard');
+        if (stats.daily_expenses) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            expenseChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: stats.daily_expenses.map(d => new Date(d.date).toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})),
+                    datasets: [{
+                        label: 'Расходы',
+                        data: stats.daily_expenses.map(d => d.amount),
+                        borderColor: '#f5365c',
+                        backgroundColor: 'rgba(245, 54, 92, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('ru-RU') + ' ₸';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load category chart
+        const categoryData = await fetchAPI('/analytics/categories');
+        if (categoryData && categoryData.length > 0) {
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryData.slice(0, 5).map(c => c.name),
+                    datasets: [{
+                        data: categoryData.slice(0, 5).map(c => c.total_amount),
+                        backgroundColor: [
+                            '#5e72e4',
+                            '#2dce89',
+                            '#f5365c',
+                            '#fb6340',
+                            '#11cdef'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    async function loadAccounts() {
+        accounts = await fetchAPI('/accounts');
+        displayAccounts();
+        updateAccountSelects();
+    }
+
+    async function loadCategories() {
+        categories = await fetchAPI('/categories');
+        displayCategories();
+        updateCategorySelect();
+    }
+
+    async function loadTransactions() {
+        showLoading(true);
+        try {
+            const filter = document.getElementById('transactionFilter').value;
+            const url = filter? `/transactions?transaction_type=${filter}` : '/transactions';
+            const transactions = await fetchAPI(url);
+            displayTransactions(transactions);
+        } catch (error) {
+            showError('Ошибка загрузки транзакций');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function loadBudgets() {
+        showLoading(true);
+        try {
+            const budgets = await fetchAPI('/budgets');
+            displayBudgets(budgets);
+        } catch (error) {
+            showError('Ошибка загрузки бюджетов');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function loadAnalytics() {
+        showLoading(true);
+        try {
+            // Load trends
+            const trends = await fetchAPI('/analytics/trends');
+            displayTrends(trends);
+
+            // Load category analytics
+            const categoryAnalytics = await fetchAPI('/analytics/categories?transaction_type=expense');
+            displayCategoryAnalytics(categoryAnalytics);
+        } catch (error) {
+            showError('Ошибка загрузки аналитики');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Display functions
+    function displayStats(stats) {
+        const statsRow = document.getElementById('statsRow');
+        statsRow.innerHTML = `
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-primary bg-gradient">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Общий баланс</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_balance)}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-success bg-gradient">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Доходы за месяц</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_income)}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-danger bg-gradient">
+                            <i class="bi bi-arrow-down-circle"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Расходы за месяц</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_expenses)}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-info bg-gradient">
+                            <i class="bi bi-piggy-bank"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Сбережения за месяц</h6>
+                            <h4 class="mb-0">${formatMoney(stats.net_savings)}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function displayRecentTransactions(transactions) {
+        const container = document.getElementById('recentTransactions');
+        if (transactions.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">Нет транзакций</p>';
+            return;
+        }
+
+        container.innerHTML = transactions.map(t => `
+            <div class="transaction-item d-flex align-items-center">
+                <div class="category-icon" style="background-color: ${t.category_color}20; color: ${t.category_color}">
+                    ${t.category_icon || '📝'}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">${t.description || t.category_name}</div>
+                    <small class="text-muted">${formatDate(t.date)} • ${getAccountName(t)}</small>
+                </div>
+                <div class="amount-${t.type}">
+                    ${t.type === 'expense' ? '-' : '+'} ${formatMoney(t.amount)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function displayTransactions(transactions) {
+        const container = document.getElementById('allTransactions');
+        if (transactions.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">Нет транзакций</p>';
+            return;
+        }
+
+        container.innerHTML = transactions.map(t => `
+            <div class="transaction-item d-flex align-items-center">
+                <div class="category-icon" style="background-color: ${t.category_color}20; color: ${t.category_color}">
+                    ${t.category_icon || '📝'}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">${t.description || t.category_name}</div>
+                    <small class="text-muted">${formatDate(t.date)} • ${getAccountName(t)}</small>
+                    ${t.tags && t.tags.length > 0 ? `<div class="mt-1">${t.tags.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('')}</div>` : ''}
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="amount-${t.type} me-3">
+                        ${t.type === 'expense' ? '-' : '+'} ${formatMoney(t.amount)}
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction(${t.id})" title="Удалить">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function deleteTransaction(id) {
+        if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) return;
+
+        try {
+            await deleteAPI(`/transactions/${id}`);
+            loadTransactions();
+            loadDashboard();
+            showSuccess('Транзакция удалена');
+        } catch (error) {
+            showError('Ошибка при удалении транзакции');
+        }
+    }
+
+    function displayBudgets(budgets) {
+        const container = document.getElementById('budgetsList');
+        if (budgets.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center">Нет бюджетов</p></div>';
+            return;
+        }
+
+        container.innerHTML = budgets.map(b => {
+            const progressColor = b.usage_percentage > 80 ? 'danger' : (b.usage_percentage > 60 ? 'warning' : 'success');
+            return `
+                <div class="col-lg-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">${b.name}</h6>
+                                    <small class="text-muted">${b.category_name}</small>
+                                </div>
+                                <span class="badge bg-${progressColor}">${b.usage_percentage}%</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>Потрачено: ${formatMoney(b.spent_amount)}</small>
+                                <small>Лимит: ${formatMoney(b.amount)}</small>
+                            </div>
+                            <div class="budget-progress">
+                                <div class="budget-progress-bar bg-${progressColor}" style="width: ${b.usage_percentage}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function displayAccounts() {
+        const container = document.getElementById('accountsList');
+        container.innerHTML = accounts.map(a => `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="fw-semibold">${a.icon || '💳'} ${a.name}</div>
+                    <small class="text-muted">${getAccountTypeName(a.type)}</small>
+                </div>
+                <div class="text-end">
+                    <div class="fw-semibold">${formatMoney(a.current_balance)}</div>
+                    <small class="text-muted">${a.transaction_count || 0} транзакций</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function displayCategories() {
+        const container = document.getElementById('categoriesList');
+        const expenseCategories = categories.filter(c => c.type === 'expense' && c.level === 0);
+
+        container.innerHTML = expenseCategories.map(c => `
+            <div class="mb-2">
+                <span class="badge" style="background-color: ${c.color}20; color: ${c.color}">
+                    ${c.icon || '📁'} ${c.name}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function displayTrends(trends) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: trends.map(t => t.period),
+                datasets: [
+                    {
+                        label: 'Доходы',
+                        data: trends.map(t => t.income),
+                        borderColor: '#2dce89',
+                        backgroundColor: 'rgba(45, 206, 137, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Расходы',
+                        data: trends.map(t => t.expenses),
+                        borderColor: '#f5365c',
+                        backgroundColor: 'rgba(245, 54, 92, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString('ru-RU') + ' ₸';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function displayCategoryAnalytics(data) {
+        const container = document.getElementById('categoryAnalytics');
+        container.innerHTML = data.map(c => `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="category-icon me-2" style="background-color: ${c.color}20; color: ${c.color}; width: 32px; height: 32px; font-size: 1rem;">
+                        ${c.icon || '📁'}
+                    </div>
+                    <div>
+                        <div class="fw-semibold">${c.name}</div>
+                        <small class="text-muted">${c.transaction_count} транзакций</small>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-semibold">${formatMoney(c.total_amount)}</div>
+                    <small class="text-muted">${c.percentage}%</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Form handlers
+    function updateTransactionForm() {
+        const type = document.querySelector('input[name="transaction_type"]:checked').value;
+        const accountFromGroup = document.getElementById('accountFromGroup');
+        const accountToGroup = document.getElementById('accountToGroup');
+        const categoryGroup = document.getElementById('categoryGroup');
+
+        switch(type) {
+            case 'expense':
+                accountFromGroup.classList.remove('d-none');
+                accountToGroup.classList.add('d-none');
+                categoryGroup.classList.remove('d-none');
+                document.getElementById('accountFrom').required = true;
+                document.getElementById('accountTo').required = false;
+                updateCategorySelect('expense');
+                break;
+            case 'income':
+                accountFromGroup.classList.add('d-none');
+                accountToGroup.classList.remove('d-none');
+                categoryGroup.classList.remove('d-none');
+                document.getElementById('accountFrom').required = false;
+                document.getElementById('accountTo').required = true;
+                updateCategorySelect('income');
+                break;
+            case 'transfer':
+                accountFromGroup.classList.remove('d-none');
+                accountToGroup.classList.remove('d-none');
+                categoryGroup.classList.add('d-none');
+                document.getElementById('accountFrom').required = true;
+                document.getElementById('accountTo').required = true;
+                break;
+        }
+    }
+
+    function updateAccountSelects() {
+        const accountFromSelect = document.getElementById('accountFrom');
+        const accountToSelect = document.getElementById('accountTo');
+
+        const options = accounts.filter(a => a.is_active).map(a =>
+            `<option value="${a.id}">${a.icon || '💳'} ${a.name} (${formatMoney(a.current_balance)})</option>`
+        ).join('');
+
+        accountFromSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        accountToSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+    }
+
+    function updateCategorySelect(type = 'expense') {
+        const categorySelect = document.getElementById('category');
+        const filteredCategories = categories.filter(c => c.type === type && c.is_active);
+
+        categorySelect.innerHTML = '<option value="">Выберите категорию</option>' +
+            filteredCategories.map(c =>
+                `<option value="${c.id}">${'  '.repeat(c.level)}${c.icon || '📁'} ${c.name}</option>`
+            ).join('');
+    }
+
+    async function addTransaction() {
+        const type = document.querySelector('input[name="transaction_type"]:checked').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const date = document.getElementById('date').value;
+        const description = document.getElementById('description').value;
+
+        const transaction = {
+            transaction_type: type,
+            amount,
+            date,
+            description,
+            account_from_id: null,
+            account_to_id: null,
+            category_id: null,
+            tag_ids: []
+        };
+
+        switch(type) {
+            case 'expense':
+                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
+                transaction.category_id = parseInt(document.getElementById('category').value);
+                break;
+            case 'income':
+                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
+                transaction.category_id = parseInt(document.getElementById('category').value);
+                break;
+            case 'transfer':
+                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
+                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
+                break;
+        }
+
+        try {
+            await postAPI('/transactions', transaction);
+            bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
+            document.getElementById('addTransactionForm').reset();
+            loadDashboard();
+            showSuccess('Транзакция добавлена');
+        } catch (error) {
+            showError('Ошибка при добавлении транзакции');
+        }
+    }
+
+    async function addAccount() {
+        const account = {
+            name: document.getElementById('accountName').value,
+            account_type: document.getElementById('accountType').value,
+            initial_balance: parseFloat(document.getElementById('initialBalance').value) || 0,
+            icon: document.getElementById('accountIcon').value || '💳',
+            color: document.getElementById('accountColor').value
+        };
+
+        try {
+            await postAPI('/accounts', account);
+            bootstrap.Modal.getInstance(document.getElementById('addAccountModal')).hide();
+            document.getElementById('addAccountForm').reset();
+            loadAccounts();
+            showSuccess('Счет добавлен');
+        } catch (error) {
+            showError('Ошибка при добавлении счета');
+        }
+    }
+
+    async function addCategory() {
+        const category = {
+            name: document.getElementById('categoryName').value,
+            category_type: document.getElementById('categoryType').value,
+            parent_id: parseInt(document.getElementById('parentCategory').value) || null,
+            icon: document.getElementById('categoryIcon').value || '📁',
+            color: document.getElementById('categoryColor').value
+        };
+
+        try {
+            await postAPI('/categories', category);
+            bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+            document.getElementById('addCategoryForm').reset();
+            loadCategories();
+            showSuccess('Категория добавлена');
+        } catch (error) {
+            showError('Ошибка при добавлении категории');
+        }
+    }
+
+    async function addBudget() {
+        const budget = {
+            name: document.getElementById('budgetName').value,
+            category_id: parseInt(document.getElementById('budgetCategory').value),
+            amount: parseFloat(document.getElementById('budgetAmount').value),
+            period: document.getElementById('budgetPeriod').value,
+            start_date: new Date().toISOString().split('T')[0]
+        };
+
+        try {
+            await postAPI('/budgets', budget);
+            bootstrap.Modal.getInstance(document.getElementById('addBudgetModal')).hide();
+            document.getElementById('addBudgetForm').reset();
+            loadBudgets();
+            showSuccess('Бюджет добавлен');
+        } catch (error) {
+            showError('Ошибка при добавлении бюджета');
+        }
+    }
+
+    // Modal functions
+    function showAddTransactionModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addTransactionModal'));
+        updateTransactionForm();
+        modal.show();
+    }
+
+    function showAddAccountModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+        modal.show();
+    }
+
+    function showAddCategoryModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
+        // Load parent categories
+        const parentSelect = document.getElementById('parentCategory');
+        const parentCategories = categories.filter(c => c.level === 0);
+        parentSelect.innerHTML = '<option value="">Нет (основная категория)</option>' +
+            parentCategories.map(c =>
+                `<option value="${c.id}">${c.icon || '📁'} ${c.name}</option>`
+            ).join('');
+        modal.show();
+    }
+
+    function showAddBudgetModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addBudgetModal'));
+        // Load expense categories
+        const categorySelect = document.getElementById('budgetCategory');
+        const expenseCategories = categories.filter(c => c.type === 'expense' && c.level === 0);
+        categorySelect.innerHTML = '<option value="">Выберите категорию</option>' +
+            expenseCategories.map(c =>
+                `<option value="${c.id}">${c.icon || '📁'} ${c.name}</option>`
+            ).join('');
+        modal.show();
+    }
+
+    // Utility functions
+    async function fetchAPI(endpoint) {
+        const response = await fetch(API_URL + endpoint);
+        if (!response.ok) throw new Error('API Error');
+        return response.json();
+    }
+
+    async function postAPI(endpoint, data) {
+        const response = await fetch(API_URL + endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('API Error');
+        return response.json();
+    }
+
+    async function deleteAPI(endpoint) {
+        const response = await fetch(API_URL + endpoint, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        if (!response.ok) throw new Error('API Error');
+        return response.json();
+    }
+
+    function formatMoney(amount) {
+        return new Intl.NumberFormat('ru-RU', {
+            style: 'currency',
+            currency: 'KZT',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount || 0);
+    }
+
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    function getAccountName(transaction) {
+        if (transaction.type === 'expense') return transaction.account_from_name || '';
+        if (transaction.type === 'income') return transaction.account_to_name || '';
+        if (transaction.type === 'transfer') return `${transaction.account_from_name} → ${transaction.account_to_name}`;
+        return '';
+    }
+
+    function getAccountTypeName(type) {
+        const types = {
+            'cash': 'Наличные',
+            'debit_card': 'Дебетовая карта',
+            'credit_card': 'Кредитная карта',
+            'savings': 'Сберегательный счет',
+            'investment': 'Инвестиционный счет'
+        };
+        return types[type] || type;
+    }
+
+    function showLoading(show) {
+        document.getElementById('loadingSpinner').classList.toggle('d-none', !show);
+    }
+
+    function showSuccess(message) {
+        const toastEl = document.getElementById('successToast');
+        document.getElementById('successMessage').textContent = message;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    function showError(message) {
+        const toastEl = document.getElementById('errorToast');
+        document.getElementById('errorMessage').textContent = message;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+</script>
+</body>
+</html>
