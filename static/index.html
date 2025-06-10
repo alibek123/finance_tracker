@@ -15,11 +15,26 @@
             --warning-color: #fb6340;
             --info-color: #11cdef;
             --dark: #32325d;
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #32325d;
+            --text-secondary: #8898aa;
+            --border-color: #e9ecef;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --text-primary: #ffffff;
+            --text-secondary: #a4a8b4;
+            --border-color: #2d3348;
         }
 
         body {
-            background-color: #f8f9fa;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .navbar {
@@ -33,6 +48,8 @@
         }
 
         .card {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             border: 0;
             box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
             transition: all 0.3s;
@@ -72,12 +89,12 @@
 
         .transaction-item {
             padding: 1rem;
-            border-bottom: 1px solid #e9ecef;
+            border-bottom: 1px solid var(--border-color);
             transition: background-color 0.2s;
         }
 
         .transaction-item:hover {
-            background-color: #f8f9fa;
+            background-color: var(--bg-primary);
         }
 
         .transaction-item:last-child {
@@ -113,13 +130,27 @@
         .budget-progress {
             height: 8px;
             border-radius: 4px;
-            background-color: #e9ecef;
+            background-color: var(--border-color);
             overflow: hidden;
             margin-top: 0.5rem;
         }
 
         .budget-progress-bar {
             height: 100%;
+            transition: width 0.6s ease;
+        }
+
+        .goal-progress {
+            height: 12px;
+            border-radius: 6px;
+            background-color: var(--border-color);
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .goal-progress-bar {
+            height: 100%;
+            background: linear-gradient(45deg, var(--primary-color), var(--info-color));
             transition: width 0.6s ease;
         }
 
@@ -134,9 +165,15 @@
             z-index: 1000;
         }
 
+        .modal-content {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
         .modal-header {
             background: linear-gradient(87deg, #5e72e4 0, #825ee4 100%);
             color: white;
+            border-bottom: 0;
         }
 
         .modal-header .btn-close {
@@ -156,6 +193,107 @@
             height: 300px;
             margin-top: 1rem;
         }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .search-box input {
+            padding-left: 38px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .search-box input:focus {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--primary-color);
+        }
+
+        .tag-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            margin: 0.25rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .tag-badge:hover {
+            transform: scale(1.05);
+        }
+
+        .tag-badge.selected {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .recurring-badge {
+            background-color: var(--warning-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        .form-control, .form-select {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--primary-color);
+        }
+
+        .nav-tabs {
+            border-bottom-color: var(--border-color);
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            border-color: transparent;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color) var(--border-color) var(--bg-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .floating-btn {
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .stat-card {
+                margin-bottom: 1rem;
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -172,10 +310,13 @@
         <a class="navbar-brand" href="#">
             <i class="bi bi-wallet2"></i> Мои финансы
         </a>
-        <div class="ms-auto">
-                <span class="navbar-text text-white">
-                    <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
-                </span>
+        <div class="ms-auto d-flex align-items-center">
+            <button class="btn btn-link text-white me-3" onclick="toggleTheme()" title="Сменить тему">
+                <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+            </button>
+            <span class="navbar-text text-white">
+                <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
+            </span>
         </div>
     </div>
 </nav>
@@ -204,6 +345,16 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="budgets-tab" data-bs-toggle="tab" data-bs-target="#budgets" type="button">
                 <i class="bi bi-piggy-bank"></i> Бюджеты
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button">
+                <i class="bi bi-bullseye"></i> Цели
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="recurring-tab" data-bs-toggle="tab" data-bs-target="#recurring" type="button">
+                <i class="bi bi-arrow-repeat"></i> Повторяющиеся
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -265,19 +416,60 @@
         <!-- Transactions Tab -->
         <div class="tab-pane fade" id="transactions" role="tabpanel">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Все транзакции</h5>
-                    <div>
-                        <select class="form-select form-select-sm d-inline-block w-auto" id="transactionFilter">
-                            <option value="">Все типы</option>
-                            <option value="expense">Расходы</option>
-                            <option value="income">Доходы</option>
-                            <option value="transfer">Переводы</option>
-                        </select>
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h5 class="mb-0">Все транзакции</h5>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <div class="search-box">
+                                        <i class="bi bi-search search-icon"></i>
+                                        <input type="text" class="form-control" id="transactionSearch"
+                                               placeholder="Поиск...">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="date" class="form-control" id="filterStartDate">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="date" class="form-control" id="filterEndDate">
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select" id="transactionFilter">
+                                        <option value="">Все типы</option>
+                                        <option value="expense">Расходы</option>
+                                        <option value="income">Доходы</option>
+                                        <option value="transfer">Переводы</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div id="selectedTags">
+                                <!-- Selected tags will appear here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body" id="allTransactions">
                     <!-- All transactions will be loaded here -->
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button class="btn btn-sm btn-secondary" onclick="exportData('csv')">
+                            <i class="bi bi-download"></i> Экспорт CSV
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="exportData('json')">
+                            <i class="bi bi-download"></i> Экспорт JSON
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="showImportModal()">
+                            <i class="bi bi-upload"></i> Импорт данных
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -292,6 +484,32 @@
             </div>
             <div class="row" id="budgetsList">
                 <!-- Budgets will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Goals Tab -->
+        <div class="tab-pane fade" id="goals" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Цели накопления</h5>
+                <button class="btn btn-sm btn-primary" onclick="showAddGoalModal()">
+                    <i class="bi bi-plus-circle"></i> Добавить цель
+                </button>
+            </div>
+            <div class="row" id="goalsList">
+                <!-- Goals will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Recurring Tab -->
+        <div class="tab-pane fade" id="recurring" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Повторяющиеся транзакции</h5>
+                <button class="btn btn-sm btn-primary" onclick="showAddRecurringModal()">
+                    <i class="bi bi-plus-circle"></i> Добавить
+                </button>
+            </div>
+            <div class="row" id="recurringList">
+                <!-- Recurring transactions will be loaded here -->
             </div>
         </div>
 
@@ -313,12 +531,22 @@
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0">Структура расходов</h5>
+                            <h5 class="mb-0">Прогноз расходов</h5>
                         </div>
-                        <div class="card-body">
-                            <div id="categoryAnalytics">
-                                <!-- Category analytics will be loaded here -->
-                            </div>
+                        <div class="card-body" id="forecastContent">
+                            <!-- Forecast will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Структура расходов по категориям</h5>
+                        </div>
+                        <div class="card-body" id="categoryAnalytics">
+                            <!-- Category analytics will be loaded here -->
                         </div>
                     </div>
                 </div>
@@ -354,6 +582,23 @@
                         <div class="card-footer">
                             <button class="btn btn-sm btn-primary" onclick="showAddCategoryModal()">
                                 <i class="bi bi-plus-circle"></i> Добавить категорию
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Теги</h5>
+                        </div>
+                        <div class="card-body" id="tagsList">
+                            <!-- Tags will be loaded here -->
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-primary" onclick="showAddTagModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить тег
                             </button>
                         </div>
                     </div>
@@ -449,6 +694,13 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Теги</label>
+                        <div id="transactionTags">
+                            <!-- Tags will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Дата</label>
                         <input type="date" class="form-control" id="date" required>
                     </div>
@@ -457,6 +709,34 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" onclick="addTransaction()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Импорт данных</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importForm">
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label">Выберите файл (CSV или JSON)</label>
+                        <input type="file" class="form-control" id="importFile" accept=".csv,.json" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Формат CSV: date, type, amount, description, notes, category,
+                        account_from, account_to, tags
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="importData()">Импортировать</button>
             </div>
         </div>
     </div>
@@ -492,6 +772,16 @@
                         <label class="form-label">Начальный баланс</label>
                         <input type="number" class="form-control" id="initialBalance" required min="0" step="0.01"
                                value="0">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Валюта</label>
+                        <select class="form-select" id="accountCurrency">
+                            <option value="KZT">KZT - Тенге</option>
+                            <option value="USD">USD - Доллар</option>
+                            <option value="EUR">EUR - Евро</option>
+                            <option value="RUB">RUB - Рубль</option>
+                        </select>
                     </div>
 
                     <div class="mb-3">
@@ -609,6 +899,159 @@
     </div>
 </div>
 
+<!-- Add Tag Modal -->
+<div class="modal fade" id="addTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить тег</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTagForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="tagName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Цвет</label>
+                        <input type="color" class="form-control form-control-color" id="tagColor" value="#5e72e4">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addTag()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Goal Modal -->
+<div class="modal fade" id="addGoalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить цель накопления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addGoalForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="goalName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Целевая сумма</label>
+                        <input type="number" class="form-control" id="goalAmount" required min="0" step="0.01">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Целевая дата</label>
+                        <input type="date" class="form-control" id="goalDate">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Счет для накопления</label>
+                        <select class="form-select" id="goalAccount">
+                            <option value="">Без привязки к счету</option>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Заметки</label>
+                        <textarea class="form-control" id="goalNotes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addGoal()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Recurring Transaction Modal -->
+<div class="modal fade" id="addRecurringModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить повторяющуюся транзакцию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addRecurringForm">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-control" id="recurringName" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Тип</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="recurring_type" id="recurringExpense"
+                                   value="expense" checked>
+                            <label class="btn btn-outline-danger" for="recurringExpense">Расход</label>
+
+                            <input type="radio" class="btn-check" name="recurring_type" id="recurringIncome"
+                                   value="income">
+                            <label class="btn btn-outline-success" for="recurringIncome">Доход</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сумма</label>
+                        <input type="number" class="form-control" id="recurringAmount" required min="0" step="0.01">
+                    </div>
+
+                    <div class="mb-3" id="recurringAccountFrom">
+                        <label class="form-label">Счет</label>
+                        <select class="form-select" id="recurringAccount" required>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Категория</label>
+                        <select class="form-select" id="recurringCategory" required>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Частота</label>
+                        <select class="form-select" id="recurringFrequency" required>
+                            <option value="daily">Ежедневно</option>
+                            <option value="weekly">Еженедельно</option>
+                            <option value="monthly">Ежемесячно</option>
+                            <option value="quarterly">Ежеквартально</option>
+                            <option value="yearly">Ежегодно</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Дата начала</label>
+                        <input type="date" class="form-control" id="recurringStartDate" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Дата окончания (опционально)</label>
+                        <input type="date" class="form-control" id="recurringEndDate">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="addRecurring()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // API Configuration
@@ -617,15 +1060,60 @@
     // Global variables
     let accounts = [];
     let categories = [];
+    let tags = [];
     let expenseChart = null;
     let categoryChart = null;
     let trendChart = null;
+    let selectedTags = [];
+    let selectedDate = new Date();
+
+    // Theme management
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+
+        // Update charts colors
+        updateChartsTheme();
+    }
+
+    function updateThemeIcon(theme) {
+        const icon = document.getElementById('themeIcon');
+        icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    }
+
+    function updateChartsTheme() {
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+
+        // Update all charts
+        [expenseChart, categoryChart, trendChart].forEach(chart => {
+            if (chart) {
+                chart.options.plugins.legend.labels.color = textColor;
+                chart.options.scales?.x && (chart.options.scales.x.ticks.color = textColor);
+                chart.options.scales?.y && (chart.options.scales.y.ticks.color = textColor);
+                chart.options.scales?.x && (chart.options.scales.x.grid.color = gridColor);
+                chart.options.scales?.y && (chart.options.scales.y.grid.color = gridColor);
+                chart.update();
+            }
+        });
+    }
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
+        initTheme();
         loadDashboard();
         loadAccounts();
         loadCategories();
+        loadTags();
 
         // Set current date
         document.getElementById('currentDate').textContent = new Date().toLocaleDateString('ru-RU', {
@@ -636,24 +1124,72 @@
 
         // Set default date in form
         document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('recurringStartDate').valueAsDate = new Date();
 
         // Transaction type change handler
         document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
             radio.addEventListener('change', updateTransactionForm);
         });
 
+        document.querySelectorAll('input[name="recurring_type"]').forEach(radio => {
+            radio.addEventListener('change', updateRecurringForm);
+        });
+
         // Tab change handlers
         document.getElementById('transactions-tab').addEventListener('click', loadTransactions);
         document.getElementById('budgets-tab').addEventListener('click', loadBudgets);
+        document.getElementById('goals-tab').addEventListener('click', loadGoals);
+        document.getElementById('recurring-tab').addEventListener('click', loadRecurringTransactions);
         document.getElementById('analytics-tab').addEventListener('click', loadAnalytics);
         document.getElementById('settings-tab').addEventListener('click', () => {
             loadAccounts();
             loadCategories();
+            loadTags();
         });
 
-        // Transaction filter
-        document.getElementById('transactionFilter').addEventListener('change', loadTransactions);
+        // Search and filter handlers
+        let searchTimeout;
+        document.getElementById('transactionSearch').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => searchTransactions(), 300);
+        });
+
+        document.getElementById('transactionFilter').addEventListener('change', searchTransactions);
+        document.getElementById('filterStartDate').addEventListener('change', searchTransactions);
+        document.getElementById('filterEndDate').addEventListener('change', searchTransactions);
     });
+
+    // Search transactions
+    async function searchTransactions() {
+        const searchQuery = document.getElementById('transactionSearch').value;
+        const typeFilter = document.getElementById('transactionFilter').value;
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+
+        showLoading(true);
+        try {
+            let url = '/search/transactions?limit=100';
+
+            if (searchQuery) url += `&q=${encodeURIComponent(searchQuery)}`;
+            if (typeFilter) url += `&transaction_types=${typeFilter}`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+            if (selectedTags.length > 0) {
+                url += `&tag_ids=${selectedTags.join(',')}`;
+            }
+
+            const result = await fetchAPI(url);
+            displayTransactions(result.transactions);
+
+            // Show result count
+            const countInfo = `<small class="text-muted">Найдено: ${result.total} транзакций</small>`;
+            document.getElementById('allTransactions').insertAdjacentHTML('afterbegin', countInfo);
+        } catch (error) {
+            showError('Ошибка поиска');
+        } finally {
+            showLoading(false);
+        }
+    }
 
     // Loading functions
     async function loadDashboard() {
@@ -677,20 +1213,47 @@
     }
 
     async function loadDashboardCharts() {
-        // Load expense chart data
+        // Get dashboard data
         const stats = await fetchAPI('/analytics/dashboard');
-        if (stats.daily_expenses) {
+
+        // Load expense chart data
+        if (stats.daily_expenses && stats.daily_expenses.length > 0) {
             const ctx = document.getElementById('expenseChart').getContext('2d');
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+
+            if (expenseChart) expenseChart.destroy();
+
+            // Fill in missing dates
+            const expensesByDate = {};
+            stats.daily_expenses.forEach(d => {
+                expensesByDate[d.date] = d.amount;
+            });
+
+            // Create array of last 30 days
+            const today = new Date();
+            const last30Days = [];
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                last30Days.push({
+                    date: dateStr,
+                    amount: expensesByDate[dateStr] || 0
+                });
+            }
+
             expenseChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: stats.daily_expenses.map(d => new Date(d.date).toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})),
+                    labels: last30Days.map(d => new Date(d.date).toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})),
                     datasets: [{
                         label: 'Расходы',
-                        data: stats.daily_expenses.map(d => d.amount),
+                        data: last30Days.map(d => d.amount),
                         borderColor: '#f5365c',
                         backgroundColor: 'rgba(245, 54, 92, 0.1)',
-                        tension: 0.4
+                        tension: 0.4,
+                        fill: true
                     }]
                 },
                 options: {
@@ -699,6 +1262,13 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Расходы: ' + formatMoney(context.parsed.y);
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -706,8 +1276,23 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return value.toLocaleString('ru-RU') + ' ₸';
-                                }
+                                    return formatMoney(value);
+                                },
+                                color: textColor
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: textColor,
+                                maxRotation: 45,
+                                minRotation: 0
+                            },
+                            grid: {
+                                color: gridColor,
+                                display: false
                             }
                         }
                     }
@@ -715,23 +1300,21 @@
             });
         }
 
-        // Load category chart
-        const categoryData = await fetchAPI('/analytics/categories');
-        if (categoryData && categoryData.length > 0) {
+        // Load category chart from dashboard data
+        if (stats.category_breakdown && stats.category_breakdown.length > 0) {
             const ctx2 = document.getElementById('categoryChart').getContext('2d');
+
+            if (categoryChart) categoryChart.destroy();
+
+            const categoryData = stats.category_breakdown.slice(0, 5);
             categoryChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: categoryData.slice(0, 5).map(c => c.name),
+                    labels: categoryData.map(c => c.category_name),
                     datasets: [{
-                        data: categoryData.slice(0, 5).map(c => c.total_amount),
-                        backgroundColor: [
-                            '#5e72e4',
-                            '#2dce89',
-                            '#f5365c',
-                            '#fb6340',
-                            '#11cdef'
-                        ]
+                        data: categoryData.map(c => c.amount),
+                        backgroundColor: categoryData.map(c => c.color || '#5e72e4'),
+                        borderWidth: 0
                     }]
                 },
                 options: {
@@ -739,7 +1322,24 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'bottom'
+                            position: 'bottom',
+                            labels: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = Math.round((value / total) * 100);
+                                    return context.label + ': ' + formatMoney(value) + ' (' + percentage + '%)';
+                                }
+                            }
                         }
                     }
                 }
@@ -759,11 +1359,17 @@
         updateCategorySelect();
     }
 
+    async function loadTags() {
+        tags = await fetchAPI('/tags');
+        displayTags();
+        updateTagsSelect();
+    }
+
     async function loadTransactions() {
         showLoading(true);
         try {
             const filter = document.getElementById('transactionFilter').value;
-            const url = filter? `/transactions?transaction_type=${filter}` : '/transactions';
+            const url = filter ? `/transactions?transaction_type=${filter}` : '/transactions';
             const transactions = await fetchAPI(url);
             displayTransactions(transactions);
         } catch (error) {
@@ -785,6 +1391,30 @@
         }
     }
 
+    async function loadGoals() {
+        showLoading(true);
+        try {
+            const goals = await fetchAPI('/savings-goals');
+            displayGoals(goals);
+        } catch (error) {
+            showError('Ошибка загрузки целей');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function loadRecurringTransactions() {
+        showLoading(true);
+        try {
+            const recurring = await fetchAPI('/recurring-transactions');
+            displayRecurringTransactions(recurring);
+        } catch (error) {
+            showError('Ошибка загрузки повторяющихся транзакций');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     async function loadAnalytics() {
         showLoading(true);
         try {
@@ -795,6 +1425,10 @@
             // Load category analytics
             const categoryAnalytics = await fetchAPI('/analytics/categories?transaction_type=expense');
             displayCategoryAnalytics(categoryAnalytics);
+
+            // Load forecast
+            const forecast = await fetchAPI('/analytics/forecast?months_ahead=3');
+            displayForecast(forecast);
         } catch (error) {
             showError('Ошибка загрузки аналитики');
         } finally {
@@ -913,19 +1547,6 @@
         `).join('');
     }
 
-    async function deleteTransaction(id) {
-        if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) return;
-
-        try {
-            await deleteAPI(`/transactions/${id}`);
-            loadTransactions();
-            loadDashboard();
-            showSuccess('Транзакция удалена');
-        } catch (error) {
-            showError('Ошибка при удалении транзакции');
-        }
-    }
-
     function displayBudgets(budgets) {
         const container = document.getElementById('budgetsList');
         if (budgets.length === 0) {
@@ -960,13 +1581,94 @@
         }).join('');
     }
 
+    function displayGoals(goals) {
+        const container = document.getElementById('goalsList');
+        if (goals.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center">Нет целей накопления</p></div>';
+            return;
+        }
+
+        container.innerHTML = goals.map(g => `
+            <div class="col-lg-6">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">${g.name}</h6>
+                                ${g.target_date ? `<small class="text-muted">До ${formatDate(g.target_date)}</small>` : ''}
+                            </div>
+                            <span class="badge bg-primary">${g.progress_percentage || 0}%</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>Накоплено: ${formatMoney(g.current_amount)}</small>
+                            <small>Цель: ${formatMoney(g.target_amount)}</small>
+                        </div>
+                        <div class="goal-progress">
+                            <div class="goal-progress-bar" style="width: ${g.progress_percentage || 0}%"></div>
+                        </div>
+                        ${g.account_name ? `<small class="text-muted mt-2 d-block">${g.account_icon || '💳'} ${g.account_name}</small>` : ''}
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-success" onclick="showContributeModal(${g.id})">
+                                <i class="bi bi-plus-circle"></i> Пополнить
+                            </button>
+                            ${!g.is_achieved ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteGoal(${g.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>` : '<span class="badge bg-success ms-2">Достигнута!</span>'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function displayRecurringTransactions(recurring) {
+        const container = document.getElementById('recurringList');
+        if (recurring.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-muted text-center">Нет повторяющихся транзакций</p></div>';
+            return;
+        }
+
+        container.innerHTML = recurring.map(r => `
+            <div class="col-lg-6">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${r.name}</h6>
+                                <span class="badge bg-${r.type === 'expense' ? 'danger' : 'success'}">${r.type === 'expense' ? 'Расход' : 'Доход'}</span>
+                                <span class="badge bg-secondary ms-1">${getFrequencyName(r.frequency)}</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="amount-${r.type}">${formatMoney(r.amount)}</div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted d-block">${r.category_name}</small>
+                            <small class="text-muted">С ${formatDate(r.start_date)} ${r.end_date ? `до ${formatDate(r.end_date)}` : ''}</small>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary" onclick="processRecurring(${r.id})">
+                                <i class="bi bi-play-fill"></i> Создать транзакции
+                            </button>
+                            ${r.is_active ? `<button class="btn btn-sm btn-outline-secondary" onclick="toggleRecurring(${r.id}, false)">
+                                <i class="bi bi-pause-fill"></i> Приостановить
+                            </button>` : `<button class="btn btn-sm btn-outline-success" onclick="toggleRecurring(${r.id}, true)">
+                                <i class="bi bi-play-fill"></i> Активировать
+                            </button>`}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
     function displayAccounts() {
         const container = document.getElementById('accountsList');
         container.innerHTML = accounts.map(a => `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <div class="fw-semibold">${a.icon || '💳'} ${a.name}</div>
-                    <small class="text-muted">${getAccountTypeName(a.type)}</small>
+                    <small class="text-muted">${getAccountTypeName(a.type)} • ${a.currency || 'KZT'}</small>
                 </div>
                 <div class="text-end">
                     <div class="fw-semibold">${formatMoney(a.current_balance)}</div>
@@ -978,20 +1680,47 @@
 
     function displayCategories() {
         const container = document.getElementById('categoriesList');
-        const expenseCategories = categories.filter(c => c.type === 'expense' && c.level === 0);
+        const groupedCategories = {};
 
-        container.innerHTML = expenseCategories.map(c => `
-            <div class="mb-2">
-                <span class="badge" style="background-color: ${c.color}20; color: ${c.color}">
-                    ${c.icon || '📁'} ${c.name}
-                </span>
-            </div>
+        // Group by type
+        categories.forEach(c => {
+            if (!groupedCategories[c.type]) {
+                groupedCategories[c.type] = [];
+            }
+            groupedCategories[c.type].push(c);
+        });
+
+        let html = '';
+        for (const [type, cats] of Object.entries(groupedCategories)) {
+            html += `<h6 class="text-muted mb-2">${type === 'expense' ? 'Расходы' : 'Доходы'}</h6>`;
+            html += cats.filter(c => c.level === 0).map(c => `
+                <div class="mb-2">
+                    <span class="badge" style="background-color: ${c.color}20; color: ${c.color}">
+                        ${c.icon || '📁'} ${c.name}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        container.innerHTML = html;
+    }
+
+    function displayTags() {
+        const container = document.getElementById('tagsList');
+        container.innerHTML = tags.map(t => `
+            <span class="tag-badge" style="background-color: ${t.color}20; color: ${t.color}"
+                  onclick="deleteTag(${t.id})" title="Нажмите для удаления">
+                ${t.name} <small>(${t.usage_count})</small>
+            </span>
         `).join('');
     }
 
     function displayTrends(trends) {
         const ctx = document.getElementById('trendChart').getContext('2d');
         if (trendChart) trendChart.destroy();
+
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
 
         trendChart = new Chart(ctx, {
             type: 'line',
@@ -1017,13 +1746,32 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: textColor
+                        }
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
                                 return value.toLocaleString('ru-RU') + ' ₸';
-                            }
+                            },
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
                         }
                     }
                 }
@@ -1050,6 +1798,28 @@
                 </div>
             </div>
         `).join('');
+    }
+
+    function displayForecast(forecast) {
+        const container = document.getElementById('forecastContent');
+        container.innerHTML = `
+            <div class="mb-4">
+                <h6>Прогноз на ${forecast.months_ahead} ${getMonthsWord(forecast.months_ahead)}</h6>
+                <h3 class="text-danger">${formatMoney(forecast.total_forecast)}</h3>
+            </div>
+            <div>
+                <h6 class="mb-3">По категориям:</h6>
+                ${forecast.by_category.map(c => `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center">
+                            <span style="color: ${c.color}">${c.icon || '📁'}</span>
+                            <span class="ms-2">${c.name}</span>
+                        </div>
+                        <small>${formatMoney(c.forecast_total)}</small>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
     // Form handlers
@@ -1086,9 +1856,18 @@
         }
     }
 
+    function updateRecurringForm() {
+        const type = document.querySelector('input[name="recurring_type"]:checked').value;
+        const label = document.querySelector('#recurringAccountFrom label');
+        label.textContent = type === 'expense' ? 'Со счета' : 'На счет';
+        updateCategorySelect(type, 'recurringCategory');
+    }
+
     function updateAccountSelects() {
         const accountFromSelect = document.getElementById('accountFrom');
         const accountToSelect = document.getElementById('accountTo');
+        const recurringAccountSelect = document.getElementById('recurringAccount');
+        const goalAccountSelect = document.getElementById('goalAccount');
 
         const options = accounts.filter(a => a.is_active).map(a =>
             `<option value="${a.id}">${a.icon || '💳'} ${a.name} (${formatMoney(a.current_balance)})</option>`
@@ -1096,23 +1875,97 @@
 
         accountFromSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
         accountToSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        recurringAccountSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        goalAccountSelect.innerHTML = '<option value="">Без привязки к счету</option>' + options;
     }
 
-    function updateCategorySelect(type = 'expense') {
-        const categorySelect = document.getElementById('category');
+    function updateCategorySelect(type = 'expense', selectId = 'category') {
+        const categorySelect = document.getElementById(selectId);
         const filteredCategories = categories.filter(c => c.type === type && c.is_active);
 
-        categorySelect.innerHTML = '<option value="">Выберите категорию</option>' +
-            filteredCategories.map(c =>
-                `<option value="${c.id}">${'  '.repeat(c.level)}${c.icon || '📁'} ${c.name}</option>`
-            ).join('');
+        const mainCategories = filteredCategories.filter(c => !c.parent_id);
+        const subcategories = filteredCategories.filter(c => c.parent_id);
+
+        let optionsHtml = '<option value="">Выберите категорию</option>';
+
+        mainCategories.forEach(main => {
+            optionsHtml += `<option value="${main.id}" style="font-weight: bold;">${main.icon || '📁'} ${main.name}</option>`;
+
+            const subs = subcategories.filter(s => s.parent_id === main.id);
+            subs.forEach(sub => {
+                optionsHtml += `<option value="${sub.id}" style="padding-left: 20px;">&nbsp;&nbsp;${sub.icon || '📄'} ${sub.name}</option>`;
+            });
+        });
+
+        categorySelect.innerHTML = optionsHtml;
     }
 
+    function updateTagsSelect() {
+        const container = document.getElementById('transactionTags');
+        const selectedContainer = document.getElementById('selectedTags');
+
+        container.innerHTML = tags.map(t => `
+            <span class="tag-badge" id="tag-${t.id}"
+                  style="background-color: ${t.color}20; color: ${t.color}"
+                  onclick="toggleTag(${t.id})">
+                ${t.name}
+            </span>
+        `).join('');
+
+        // Update filter tags
+        selectedContainer.innerHTML = tags.map(t => `
+            <span class="tag-badge" id="filter-tag-${t.id}"
+                  style="background-color: ${t.color}20; color: ${t.color}"
+                  onclick="toggleFilterTag(${t.id})">
+                ${t.name}
+            </span>
+        `).join('');
+    }
+
+    function toggleTag(tagId) {
+        const tag = document.getElementById(`tag-${tagId}`);
+        const index = selectedTags.indexOf(tagId);
+
+        if (index > -1) {
+            selectedTags.splice(index, 1);
+            tag.classList.remove('selected');
+        } else {
+            selectedTags.push(tagId);
+            tag.classList.add('selected');
+        }
+    }
+
+    function toggleFilterTag(tagId) {
+        const tag = document.getElementById(`filter-tag-${tagId}`);
+        const index = selectedTags.indexOf(tagId);
+
+        if (index > -1) {
+            selectedTags.splice(index, 1);
+            tag.classList.remove('selected');
+        } else {
+            selectedTags.push(tagId);
+            tag.classList.add('selected');
+        }
+
+        searchTransactions();
+    }
+
+    // CRUD operations
     async function addTransaction() {
         const type = document.querySelector('input[name="transaction_type"]:checked').value;
         const amount = parseFloat(document.getElementById('amount').value);
         const date = document.getElementById('date').value;
         const description = document.getElementById('description').value;
+
+        if (!amount || amount <= 0) {
+            showError('Введите корректную сумму');
+            return;
+        }
+
+        if (!date) {
+            showError('Выберите дату');
+            return;
+        }
 
         const transaction = {
             transaction_type: type,
@@ -1122,21 +1975,63 @@
             account_from_id: null,
             account_to_id: null,
             category_id: null,
-            tag_ids: []
+            tag_ids: selectedTags
         };
 
         switch(type) {
             case 'expense':
-                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
-                transaction.category_id = parseInt(document.getElementById('category').value);
+                const accountFrom = document.getElementById('accountFrom').value;
+                const categoryExp = document.getElementById('category').value;
+
+                if (!accountFrom) {
+                    showError('Выберите счет списания');
+                    return;
+                }
+                if (!categoryExp) {
+                    showError('Выберите категорию расхода');
+                    return;
+                }
+
+                transaction.account_from_id = parseInt(accountFrom);
+                transaction.category_id = parseInt(categoryExp);
                 break;
+
             case 'income':
-                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
-                transaction.category_id = parseInt(document.getElementById('category').value);
+                const accountTo = document.getElementById('accountTo').value;
+                const categoryInc = document.getElementById('category').value;
+
+                if (!accountTo) {
+                    showError('Выберите счет пополнения');
+                    return;
+                }
+                if (!categoryInc) {
+                    showError('Выберите категорию дохода');
+                    return;
+                }
+
+                transaction.account_to_id = parseInt(accountTo);
+                transaction.category_id = parseInt(categoryInc);
                 break;
+
             case 'transfer':
-                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
-                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
+                const accFrom = document.getElementById('accountFrom').value;
+                const accTo = document.getElementById('accountTo').value;
+
+                if (!accFrom) {
+                    showError('Выберите счет списания');
+                    return;
+                }
+                if (!accTo) {
+                    showError('Выберите счет пополнения');
+                    return;
+                }
+                if (accFrom === accTo) {
+                    showError('Выберите разные счета для перевода');
+                    return;
+                }
+
+                transaction.account_from_id = parseInt(accFrom);
+                transaction.account_to_id = parseInt(accTo);
                 break;
         }
 
@@ -1144,10 +2039,27 @@
             await postAPI('/transactions', transaction);
             bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
             document.getElementById('addTransactionForm').reset();
+            document.getElementById('date').valueAsDate = new Date();
+            selectedTags = [];
+            updateTagsSelect();
             loadDashboard();
+            loadTransactions();
             showSuccess('Транзакция добавлена');
         } catch (error) {
             showError('Ошибка при добавлении транзакции');
+        }
+    }
+
+    async function deleteTransaction(id) {
+        if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) return;
+
+        try {
+            await deleteAPI(`/transactions/${id}`);
+            loadTransactions();
+            loadDashboard();
+            showSuccess('Транзакция удалена');
+        } catch (error) {
+            showError('Ошибка при удалении транзакции');
         }
     }
 
@@ -1156,6 +2068,7 @@
             name: document.getElementById('accountName').value,
             account_type: document.getElementById('accountType').value,
             initial_balance: parseFloat(document.getElementById('initialBalance').value) || 0,
+            currency: document.getElementById('accountCurrency').value,
             icon: document.getElementById('accountIcon').value || '💳',
             color: document.getElementById('accountColor').value
         };
@@ -1211,10 +2124,190 @@
         }
     }
 
+    async function addTag() {
+        const tag = {
+            name: document.getElementById('tagName').value,
+            color: document.getElementById('tagColor').value
+        };
+
+        try {
+            await postAPI('/tags', tag);
+            bootstrap.Modal.getInstance(document.getElementById('addTagModal')).hide();
+            document.getElementById('addTagForm').reset();
+            loadTags();
+            showSuccess('Тег добавлен');
+        } catch (error) {
+            showError('Ошибка при добавлении тега');
+        }
+    }
+
+    async function deleteTag(id) {
+        if (!confirm('Вы уверены, что хотите удалить этот тег?')) return;
+
+        try {
+            await deleteAPI(`/tags/${id}`);
+            loadTags();
+            showSuccess('Тег удален');
+        } catch (error) {
+            showError('Ошибка при удалении тега');
+        }
+    }
+
+    async function addGoal() {
+        const goal = {
+            name: document.getElementById('goalName').value,
+            target_amount: parseFloat(document.getElementById('goalAmount').value),
+            target_date: document.getElementById('goalDate').value || null,
+            account_id: parseInt(document.getElementById('goalAccount').value) || null,
+            notes: document.getElementById('goalNotes').value
+        };
+
+        try {
+            await postAPI('/savings-goals', goal);
+            bootstrap.Modal.getInstance(document.getElementById('addGoalModal')).hide();
+            document.getElementById('addGoalForm').reset();
+            loadGoals();
+            showSuccess('Цель добавлена');
+        } catch (error) {
+            showError('Ошибка при добавлении цели');
+        }
+    }
+
+    async function deleteGoal(id) {
+        if (!confirm('Вы уверены, что хотите удалить эту цель?')) return;
+
+        try {
+            await deleteAPI(`/savings-goals/${id}`);
+            loadGoals();
+            showSuccess('Цель удалена');
+        } catch (error) {
+            showError('Ошибка при удалении цели');
+        }
+    }
+
+    async function showContributeModal(goalId) {
+        const amount = prompt('Введите сумму пополнения:');
+        if (!amount) return;
+
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            showError('Введите корректную сумму');
+            return;
+        }
+
+        try {
+            await postAPI(`/savings-goals/${goalId}/contribute?amount=${parsedAmount}`);
+            loadGoals();
+            showSuccess('Цель пополнена');
+        } catch (error) {
+            showError('Ошибка при пополнении цели');
+        }
+    }
+
+    async function addRecurring() {
+        const type = document.querySelector('input[name="recurring_type"]:checked').value;
+        const recurring = {
+            name: document.getElementById('recurringName').value,
+            transaction_type: type,
+            amount: parseFloat(document.getElementById('recurringAmount').value),
+            category_id: parseInt(document.getElementById('recurringCategory').value),
+            frequency: document.getElementById('recurringFrequency').value,
+            start_date: document.getElementById('recurringStartDate').value,
+            end_date: document.getElementById('recurringEndDate').value || null
+        };
+
+        const accountId = parseInt(document.getElementById('recurringAccount').value);
+        if (type === 'expense') {
+            recurring.account_from_id = accountId;
+        } else {
+            recurring.account_to_id = accountId;
+        }
+
+        try {
+            await postAPI('/recurring-transactions', recurring);
+            bootstrap.Modal.getInstance(document.getElementById('addRecurringModal')).hide();
+            document.getElementById('addRecurringForm').reset();
+            loadRecurringTransactions();
+            showSuccess('Повторяющаяся транзакция добавлена');
+        } catch (error) {
+            showError('Ошибка при добавлении повторяющейся транзакции');
+        }
+    }
+
+    async function processRecurring(id) {
+        try {
+            const result = await postAPI(`/recurring-transactions/${id}/process`);
+            loadRecurringTransactions();
+            showSuccess(`Создано транзакций: ${result.created}`);
+        } catch (error) {
+            showError('Ошибка при обработке повторяющейся транзакции');
+        }
+    }
+
+    // Export/Import functions
+    async function exportData(format) {
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+
+        let url = `/export/${format}?`;
+        if (startDate) url += `start_date=${startDate}&`;
+        if (endDate) url += `end_date=${endDate}`;
+
+        window.open(API_URL + url, '_blank');
+    }
+
+    async function importData() {
+        const fileInput = document.getElementById('importFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showError('Выберите файл для импорта');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showLoading(true);
+        try {
+            const response = await fetch(API_URL + '/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Import failed');
+
+            const result = await response.json();
+
+            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+            document.getElementById('importForm').reset();
+
+            if (result.errors && result.errors.length > 0) {
+                showError(`Импортировано ${result.imported} из ${result.total}. Ошибки: ${result.errors.join(', ')}`);
+            } else {
+                showSuccess(`Импортировано ${result.imported} транзакций`);
+            }
+
+            loadTransactions();
+            loadDashboard();
+        } catch (error) {
+            showError('Ошибка при импорте данных');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     // Modal functions
     function showAddTransactionModal() {
         const modal = new bootstrap.Modal(document.getElementById('addTransactionModal'));
         updateTransactionForm();
+        selectedTags = [];
+        updateTagsSelect();
+        modal.show();
+    }
+
+    function showImportModal() {
+        const modal = new bootstrap.Modal(document.getElementById('importModal'));
         modal.show();
     }
 
@@ -1247,6 +2340,22 @@
         modal.show();
     }
 
+    function showAddTagModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addTagModal'));
+        modal.show();
+    }
+
+    function showAddGoalModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addGoalModal'));
+        modal.show();
+    }
+
+    function showAddRecurringModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addRecurringModal'));
+        updateRecurringForm();
+        modal.show();
+    }
+
     // Utility functions
     async function fetchAPI(endpoint) {
         const response = await fetch(API_URL + endpoint);
@@ -1257,6 +2366,18 @@
     async function postAPI(endpoint, data) {
         const response = await fetch(API_URL + endpoint, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('API Error');
+        return response.json();
+    }
+
+    async function putAPI(endpoint, data) {
+        const response = await fetch(API_URL + endpoint, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -1277,10 +2398,10 @@
         return response.json();
     }
 
-    function formatMoney(amount) {
+    function formatMoney(amount, currency = 'KZT') {
         return new Intl.NumberFormat('ru-RU', {
             style: 'currency',
-            currency: 'KZT',
+            currency: currency,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         }).format(amount || 0);
@@ -1310,6 +2431,34 @@
             'investment': 'Инвестиционный счет'
         };
         return types[type] || type;
+    }
+
+    function getFrequencyName(frequency) {
+        const frequencies = {
+            'daily': 'Ежедневно',
+            'weekly': 'Еженедельно',
+            'monthly': 'Ежемесячно',
+            'quarterly': 'Ежеквартально',
+            'yearly': 'Ежегодно'
+        };
+        return frequencies[frequency] || frequency;
+    }
+
+    function getMonthsWord(count) {
+        const lastDigit = count % 10;
+        const lastTwoDigits = count % 100;
+
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+            return 'месяцев';
+        }
+
+        if (lastDigit === 1) {
+            return 'месяц';
+        } else if (lastDigit >= 2 && lastDigit <= 4) {
+            return 'месяца';
+        } else {
+            return 'месяцев';
+        }
     }
 
     function showLoading(show) {
