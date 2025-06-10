@@ -12,14 +12,61 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 import os
 from pathlib import Path
+import urllib.parse
 
 # Загрузка переменных окружения
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
 
-load_dotenv()
+    load_dotenv()
+except ImportError:
+    pass
 
-# Настройки базы данных
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/finance_db")
+
+# Настройки базы данных с правильной кодировкой
+def get_database_url():
+    # Получаем параметры подключения
+    db_user = os.getenv("DB_USER", "postgres")
+    db_password = os.getenv("DB_PASSWORD", "postgres")
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "finance_db")
+    default_schema = os.getenv("DB_SCHEMA", "finance")
+
+    # Экранируем пароль для URL
+    db_password_encoded = urllib.parse.quote_plus(db_password)
+    schema_encoded = urllib.parse.quote_plus(default_schema)
+
+    # Формируем URL с параметрами кодировки
+    return (
+        f"postgresql://{db_user}:{db_password_encoded}@{db_host}:{db_port}/{db_name}"
+        f"?client_encoding=utf8&options=-csearch_path%3D{schema_encoded}"
+    )
+
+
+DATABASE_URL = os.getenv("DATABASE_URL", get_database_url())
+
+# Создаем engine с дополнительными параметрами для Windows
+try:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,  # Проверка соединения перед использованием
+        pool_size=5,
+        max_overflow=10,
+        connect_args={
+            "client_encoding": "utf8",
+            "connect_timeout": 10
+        }
+    )
+    # Проверяем подключение
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+        print("✅ Successfully connected to database")
+except Exception as e:
+    print(f"❌ Database connection error: {e}")
+    print("Please check your database settings in .env file:")
+    print("DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME")
+    raise
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -218,7 +265,7 @@ def get_categories(
                 c.id, c.name, c.parent_id, c.type, c.icon, c.color, c.is_active,
                 c.name::text as path,
                 0 as level
-            FROM finance.categories c
+            FROM categories c
             WHERE c.parent_id IS NULL
 
             UNION ALL
@@ -227,7 +274,7 @@ def get_categories(
                 c.id, c.name, c.parent_id, c.type, c.icon, c.color, c.is_active,
                 (ct.path || ' > ' || c.name)::text as path,
                 ct.level + 1 as level
-            FROM finance.categories c
+            FROM categories c
             JOIN category_tree ct ON c.parent_id = ct.id
         )
         SELECT * FROM category_tree
@@ -251,7 +298,7 @@ def get_categories(
 @app.post("/api/categories", response_model=Dict[str, Any])
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     query = """
-        INSERT INTO finance.categories (name, parent_id, type, icon, color, is_active)
+        INSERT INTO categories (name, parent_id, type, icon, color, is_active)
         VALUES (:name, :parent_id, :category_type, :icon, :color, :is_active)
         RETURNING *
     """
@@ -262,39 +309,41 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     return dict(result.fetchone()._asdict())
 
 
-@app.put("/api/categories/{category_id}")
-def update_category(
-        category_id: int,
-        updates: Dict[str, Any],
-        db: Session = Depends(get_db)
-):
-    allowed_fields = ['name', 'icon', 'color', 'is_active']
-    update_fields = []
-    params = {"id": category_id}
+@app.delete("/api/categories/{category_id}")
+def delete_category(category_id: int, db: Session = Depends(get_db)):
+    # Проверяем, есть ли транзакции с этой категорией
+    count = db.execute(
+        text("SELECT COUNT(*) FROM transactions WHERE category_id = :id OR subcategory_id = :id"),
+        {"id": category_id}
+    ).scalar()
 
-    for field, value in updates.items():
-        if field in allowed_fields and value is not None:
-            update_fields.append(f"{field} = :{field}")
-            params[field] = value
+    if count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Невозможно удалить категорию. Существует {count} транзакций с этой категорией"
+        )
 
-    if not update_fields:
-        raise HTTPException(status_code=400, detail="No valid fields to update")
+    # Проверяем, есть ли подкатегории
+    subcount = db.execute(
+        text("SELECT COUNT(*) FROM categories WHERE parent_id = :id"),
+        {"id": category_id}
+    ).scalar()
 
-    query = f"""
-        UPDATE finance.categories 
-        SET {', '.join(update_fields)}
-        WHERE id = :id
-        RETURNING *
-    """
+    if subcount > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Невозможно удалить категорию. У неё есть {subcount} подкатегорий"
+        )
 
-    result = db.execute(text(query), params)
+    result = db.execute(
+        text("DELETE FROM categories WHERE id = :id RETURNING id"),
+        {"id": category_id}
+    )
+    deleted = result.fetchone()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
     db.commit()
-
-    row = result.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    return dict(row._asdict())
+    return {"message": "Категория удалена"}
 
 
 # Счета
@@ -308,8 +357,8 @@ def get_accounts(
             a.*,
             COUNT(DISTINCT t.id) as transaction_count,
             MAX(t.date) as last_transaction_date
-        FROM finance.accounts a
-        LEFT JOIN finance.transactions t ON (a.id = t.account_from_id OR a.id = t.account_to_id)
+        FROM accounts a
+        LEFT JOIN transactions t ON (a.id = t.account_from_id OR a.id = t.account_to_id)
         WHERE 1=1
     """
 
@@ -325,7 +374,7 @@ def get_accounts(
 @app.post("/api/accounts", response_model=Dict[str, Any])
 def create_account(account: AccountCreate, db: Session = Depends(get_db)):
     query = """
-        INSERT INTO finance.accounts (name, type, initial_balance, current_balance, credit_limit, color, icon, is_active)
+        INSERT INTO accounts (name, type, initial_balance, current_balance, credit_limit, color, icon, is_active)
         VALUES (:name, :account_type, :initial_balance, :initial_balance, :credit_limit, :color, :icon, :is_active)
         RETURNING *
     """
@@ -344,7 +393,7 @@ def update_account(
 ):
     update_data = account_update.model_dump(exclude_unset=True)
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise HTTPException(status_code=400, detail="Нет данных для обновления")
 
     update_fields = []
     params = {"id": account_id}
@@ -354,7 +403,7 @@ def update_account(
         params[field] = value
 
     query = f"""
-        UPDATE finance.accounts 
+        UPDATE accounts 
         SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
         RETURNING *
@@ -365,9 +414,113 @@ def update_account(
 
     row = result.fetchone()
     if not row:
-        raise HTTPException(status_code=404, detail="Account not found")
+        raise HTTPException(status_code=404, detail="Счет не найден")
 
     return dict(row._asdict())
+
+
+@app.delete("/api/accounts/{account_id}")
+def delete_account(account_id: int, db: Session = Depends(get_db)):
+    # Проверяем баланс
+    balance = db.execute(
+        text("SELECT current_balance FROM accounts WHERE id = :id"),
+        {"id": account_id}
+    ).scalar()
+
+    if balance is None:
+        raise HTTPException(status_code=404, detail="Счет не найден")
+
+    if balance != 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Невозможно удалить счет с ненулевым балансом ({balance})"
+        )
+
+    # Проверяем транзакции
+    count = db.execute(
+        text("SELECT COUNT(*) FROM transactions WHERE account_from_id = :id OR account_to_id = :id"),
+        {"id": account_id}
+    ).scalar()
+
+    if count > 0:
+        # Деактивируем вместо удаления
+        db.execute(
+            text("UPDATE accounts SET is_active = false WHERE id = :id"),
+            {"id": account_id}
+        )
+        db.commit()
+        return {"message": f"Счет деактивирован (есть {count} транзакций)"}
+
+    # Удаляем если нет транзакций
+    db.execute(text("DELETE FROM accounts WHERE id = :id"), {"id": account_id})
+    db.commit()
+    return {"message": "Счет удален"}
+
+
+# Корректировка баланса
+@app.post("/api/accounts/{account_id}/adjust-balance")
+def adjust_account_balance(
+        account_id: int,
+        new_balance: Decimal,
+        description: Optional[str] = None,
+        db: Session = Depends(get_db)
+):
+    trans = db.begin()
+    try:
+        # Получаем текущий баланс
+        current = db.execute(
+            text("SELECT current_balance FROM accounts WHERE id = :id"),
+            {"id": account_id}
+        ).scalar()
+
+        if current is None:
+            raise HTTPException(status_code=404, detail="Счет не найден")
+
+        difference = new_balance - current
+
+        if difference == 0:
+            return {"message": "Баланс не изменился"}
+
+        # Находим категорию "Корректировка"
+        category_id = db.execute(
+            text("SELECT id FROM categories WHERE name = 'Корректировка' AND type = 'transfer'")
+        ).scalar()
+
+        # Создаем транзакцию корректировки
+        transaction_type = "income" if difference > 0 else "expense"
+        account_field = "account_to_id" if difference > 0 else "account_from_id"
+
+        db.execute(text(f"""
+            INSERT INTO transactions (
+                date, type, amount, {account_field}, category_id, 
+                description, notes, is_planned
+            ) VALUES (
+                CURRENT_DATE, :type, :amount, :account_id, :category_id,
+                :description, 'Корректировка баланса', false
+            )
+        """), {
+            "type": transaction_type,
+            "amount": abs(difference),
+            "account_id": account_id,
+            "category_id": category_id,
+            "description": description or f"Корректировка баланса: {difference:+.2f}"
+        })
+
+        # Обновляем баланс
+        db.execute(
+            text("UPDATE accounts SET current_balance = :balance WHERE id = :id"),
+            {"balance": new_balance, "id": account_id}
+        )
+
+        trans.commit()
+        return {
+            "message": "Баланс скорректирован",
+            "difference": float(difference),
+            "new_balance": float(new_balance)
+        }
+    except Exception as e:
+        trans.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # Транзакции
@@ -393,13 +546,13 @@ def get_transactions(
                 af.name as account_from_name,
                 at.name as account_to_name,
                 array_agg(DISTINCT tg.name) FILTER (WHERE tg.name IS NOT NULL) as tags
-            FROM finance.transactions t
-            LEFT JOIN finance.categories c ON t.category_id = c.id
-            LEFT JOIN finance.categories sc ON t.subcategory_id = sc.id
-            LEFT JOIN finance.accounts af ON t.account_from_id = af.id
-            LEFT JOIN finance.accounts at ON t.account_to_id = at.id
-            LEFT JOIN finance.transaction_tags tt ON t.id = tt.transaction_id
-            LEFT JOIN finance.tags tg ON tt.tag_id = tg.id
+            FROM transactions t
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN categories sc ON t.subcategory_id = sc.id
+            LEFT JOIN accounts af ON t.account_from_id = af.id
+            LEFT JOIN accounts at ON t.account_to_id = at.id
+            LEFT JOIN transaction_tags tt ON t.id = tt.transaction_id
+            LEFT JOIN tags tg ON tt.tag_id = tg.id
             WHERE 1=1
         """
         params = {"limit": limit, "offset": offset}
@@ -439,7 +592,7 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
     trans = db.begin()
     try:
         query = """
-            INSERT INTO finance.transactions (
+            INSERT INTO transactions (
                 date, type, amount, account_from_id, account_to_id,
                 category_id, subcategory_id, description, notes, is_planned
             ) VALUES (
@@ -455,7 +608,7 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
         if transaction.tag_ids:
             for tag_id in transaction.tag_ids:
                 db.execute(
-                    text("INSERT INTO finance.transaction_tags (transaction_id, tag_id) VALUES (:tid, :tag_id)"),
+                    text("INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (:tid, :tag_id)"),
                     {"tid": transaction_id, "tag_id": tag_id}
                 )
 
@@ -463,14 +616,13 @@ def create_transaction(transaction: TransactionCreate, db: Session = Depends(get
         return {"id": transaction_id, "message": "Transaction created successfully"}
     except Exception as e:
         trans.rollback()
-        print("Error:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.delete("/api/transactions/{transaction_id}")
 def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
     result = db.execute(
-        text("DELETE FROM finance.transactions WHERE id = :id RETURNING id"),
+        text("DELETE FROM transactions WHERE id = :id RETURNING id"),
         {"id": transaction_id}
     )
     deleted = result.fetchone()
@@ -501,9 +653,9 @@ def get_budgets(
             END as usage_percentage,
             EXTRACT(DAY FROM CURRENT_DATE - DATE_TRUNC('month', CURRENT_DATE))::int as days_passed,
             EXTRACT(DAY FROM DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month') - DATE_TRUNC('month', CURRENT_DATE))::int as days_in_period
-        FROM finance.budgets b
-        LEFT JOIN finance.categories c ON b.category_id = c.id
-        LEFT JOIN finance.transactions t ON t.category_id = b.category_id
+        FROM budgets b
+        LEFT JOIN categories c ON b.category_id = c.id
+        LEFT JOIN transactions t ON t.category_id = b.category_id
             AND t.type = 'expense'
             AND t.date >= b.start_date
             AND (b.end_date IS NULL OR t.date <= b.end_date)
@@ -522,7 +674,7 @@ def get_budgets(
 @app.post("/api/budgets", response_model=Dict[str, Any])
 def create_budget(budget: BudgetCreate, db: Session = Depends(get_db)):
     query = """
-        INSERT INTO finance.budgets (name, category_id, amount, period, start_date, end_date, is_active)
+        INSERT INTO budgets (name, category_id, amount, period, start_date, end_date, is_active)
         VALUES (:name, :category_id, :amount, :period, :start_date, :end_date, :is_active)
         RETURNING *
     """
@@ -549,7 +701,7 @@ def update_budget(
         params[field] = value
 
     query = f"""
-        UPDATE finance.budgets 
+        UPDATE budgets 
         SET {', '.join(update_fields)}
         WHERE id = :id
         RETURNING *
@@ -568,7 +720,7 @@ def update_budget(
 @app.delete("/api/budgets/{budget_id}")
 def delete_budget(budget_id: int, db: Session = Depends(get_db)):
     result = db.execute(
-        text("UPDATE finance.budgets SET is_active = false WHERE id = :id RETURNING id"),
+        text("UPDATE budgets SET is_active = false WHERE id = :id RETURNING id"),
         {"id": budget_id}
     )
     updated = result.fetchone()
@@ -585,8 +737,8 @@ def get_tags(db: Session = Depends(get_db)):
         SELECT 
             t.*,
             COUNT(DISTINCT tt.transaction_id) as usage_count
-        FROM finance.tags t
-        LEFT JOIN finance.transaction_tags tt ON t.id = tt.tag_id
+        FROM tags t
+        LEFT JOIN transaction_tags tt ON t.id = tt.tag_id
         GROUP BY t.id
         ORDER BY usage_count DESC, t.name
     """
@@ -597,7 +749,7 @@ def get_tags(db: Session = Depends(get_db)):
 @app.post("/api/tags", response_model=Dict[str, Any])
 def create_tag(tag: TagCreate, db: Session = Depends(get_db)):
     query = """
-        INSERT INTO finance.tags (name, color)
+        INSERT INTO tags (name, color)
         VALUES (:name, :color)
         RETURNING *
     """
@@ -617,7 +769,7 @@ def get_savings_goals(
             sg.*,
             a.name as account_name,
             a.icon as account_icon
-        FROM finance.savings_goals sg
+        FROM savings_goals sg
         LEFT JOIN accounts a ON sg.account_id = a.id
         WHERE 1=1
     """
@@ -634,7 +786,7 @@ def get_savings_goals(
 @app.post("/api/savings-goals", response_model=Dict[str, Any])
 def create_savings_goal(goal: SavingsGoalCreate, db: Session = Depends(get_db)):
     query = """
-        INSERT INTO finance.savings_goals (name, target_amount, target_date, account_id, notes)
+        INSERT INTO savings_goals (name, target_amount, target_date, account_id, notes)
         VALUES (:name, :target_amount, :target_date, :account_id, :notes)
         RETURNING *
     """
@@ -655,7 +807,7 @@ def add_savings_contribution(
     try:
         # Добавляем взнос
         db.execute(text("""
-            INSERT INTO finance.savings_contributions (goal_id, transaction_id, amount, date, notes)
+            INSERT INTO savings_contributions (goal_id, transaction_id, amount, date, notes)
             VALUES (:goal_id, :transaction_id, :amount, CURRENT_DATE, :notes)
         """), {
             "goal_id": goal_id,
@@ -666,7 +818,7 @@ def add_savings_contribution(
 
         # Обновляем текущую сумму
         db.execute(text("""
-            UPDATE finance.savings_goals 
+            UPDATE savings_goals 
             SET current_amount = current_amount + :amount
             WHERE id = :goal_id
         """), {
@@ -676,7 +828,7 @@ def add_savings_contribution(
 
         # Проверяем, достигнута ли цель
         result = db.execute(text("""
-            UPDATE finance.savings_goals 
+            UPDATE savings_goals 
             SET is_achieved = true, achieved_at = CURRENT_TIMESTAMP
             WHERE id = :goal_id 
                 AND current_amount >= target_amount 
@@ -716,21 +868,27 @@ def get_dashboard_stats(
                 SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expenses,
                 COUNT(*) as transaction_count,
                 AVG(CASE WHEN type = 'expense' THEN amount ELSE NULL END) as avg_expense
-            FROM finance.transactions
+            FROM transactions
             WHERE date BETWEEN :start_date AND :end_date
+                AND category_id NOT IN (
+                    SELECT id FROM categories WHERE name = 'Корректировка'
+                )
         ),
         account_balances AS (
             SELECT SUM(current_balance) as total_balance
-            FROM finance.accounts
+            FROM accounts
             WHERE is_active = true
         ),
         daily_expenses AS (
             SELECT 
                 date,
                 SUM(amount) as amount
-            FROM finance.transactions
+            FROM transactions
             WHERE type = 'expense' 
                 AND date BETWEEN :start_date AND :end_date
+                AND category_id NOT IN (
+                    SELECT id FROM categories WHERE name = 'Корректировка'
+                )
             GROUP BY date
         )
         SELECT 
@@ -771,13 +929,13 @@ def get_category_analytics(
             AVG(t.amount) as avg_amount,
             ROUND(
                 SUM(t.amount) * 100.0 / NULLIF(
-                    (SELECT SUM(amount) FROM finance.transactions 
+                    (SELECT SUM(amount) FROM transactions 
                      WHERE type = :type 
                      AND date BETWEEN :start_date AND :end_date), 0
                 ), 2
             ) as percentage
-        FROM finance.categories c
-        JOIN finance.transactions t ON t.category_id = c.id
+        FROM categories c
+        JOIN transactions t ON t.category_id = c.id
         WHERE t.type = :type
             AND t.date BETWEEN :start_date AND :end_date
         GROUP BY c.id, c.name, c.icon, c.color
@@ -810,7 +968,7 @@ def get_trends(
             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses,
             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
             COUNT(*) as transaction_count
-        FROM finance.transactions
+        FROM transactions
         WHERE date >= CURRENT_DATE - INTERVAL '{months} months'
         GROUP BY TO_CHAR(date, :date_format)
         ORDER BY period
