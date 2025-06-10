@@ -268,7 +268,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Все транзакции</h5>
                     <div>
-                        <select class="form-select form-select-sm d-inline-block w-auto" id="transactionFilter">
+                        <label for="transactionFilter"></label><select class="form-select form-select-sm d-inline-block w-auto" id="transactionFilter">
                             <option value="">Все типы</option>
                             <option value="expense">Расходы</option>
                             <option value="income">Доходы</option>
@@ -419,38 +419,38 @@
 
                     <div class="mb-3">
                         <label class="form-label">Сумма</label>
-                        <input type="number" class="form-control" id="amount" required min="0" step="0.01">
+                        <label for="amount"></label><input type="number" class="form-control" id="amount" required min="0" step="0.01">
                     </div>
 
                     <div class="mb-3" id="accountFromGroup">
                         <label class="form-label">Со счета</label>
-                        <select class="form-select" id="accountFrom" required>
+                        <label for="accountFrom"></label><select class="form-select" id="accountFrom" required>
                             <!-- Will be populated dynamically -->
                         </select>
                     </div>
 
                     <div class="mb-3 d-none" id="accountToGroup">
                         <label class="form-label">На счет</label>
-                        <select class="form-select" id="accountTo">
+                        <label for="accountTo"></label><select class="form-select" id="accountTo">
                             <!-- Will be populated dynamically -->
                         </select>
                     </div>
 
                     <div class="mb-3" id="categoryGroup">
                         <label class="form-label">Категория</label>
-                        <select class="form-select" id="category" required>
+                        <label for="category"></label><select class="form-select" id="category" required>
                             <!-- Will be populated dynamically -->
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Описание</label>
-                        <input type="text" class="form-control" id="description">
+                        <label for="description"></label><input type="text" class="form-control" id="description">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Дата</label>
-                        <input type="date" class="form-control" id="date" required>
+                        <label for="date"></label><input type="date" class="form-control" id="date" required>
                     </div>
                 </form>
             </div>
@@ -474,12 +474,12 @@
                 <form id="addAccountForm">
                     <div class="mb-3">
                         <label class="form-label">Название</label>
-                        <input type="text" class="form-control" id="accountName" required>
+                        <label for="accountName"></label><input type="text" class="form-control" id="accountName" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Тип</label>
-                        <select class="form-select" id="accountType" required>
+                        <label for="accountType"></label><select class="form-select" id="accountType" required>
                             <option value="cash">Наличные</option>
                             <option value="debit_card">Дебетовая карта</option>
                             <option value="credit_card">Кредитная карта</option>
@@ -490,18 +490,18 @@
 
                     <div class="mb-3">
                         <label class="form-label">Начальный баланс</label>
-                        <input type="number" class="form-control" id="initialBalance" required min="0" step="0.01"
-                               value="0">
+                        <label for="initialBalance"></label><input type="number" class="form-control" id="initialBalance" required min="0" step="0.01"
+                                                                   value="0">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Иконка</label>
-                        <input type="text" class="form-control" id="accountIcon" placeholder="💳" maxlength="2">
+                        <label for="accountIcon"></label><input type="text" class="form-control" id="accountIcon" placeholder="💳" maxlength="2">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Цвет</label>
-                        <input type="color" class="form-control form-control-color" id="accountColor" value="#5e72e4">
+                        <label for="accountColor"></label><input type="color" class="form-control form-control-color" id="accountColor" value="#5e72e4">
                     </div>
                 </form>
             </div>
@@ -525,12 +525,12 @@
                 <form id="addCategoryForm">
                     <div class="mb-3">
                         <label class="form-label">Название</label>
-                        <input type="text" class="form-control" id="categoryName" required>
+                        <label for="categoryName"></label><input type="text" class="form-control" id="categoryName" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Тип</label>
-                        <select class="form-select" id="categoryType" required>
+                        <label for="categoryType"></label><select class="form-select" id="categoryType" required>
                             <option value="expense">Расход</option>
                             <option value="income">Доход</option>
                         </select>
@@ -538,7 +538,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Родительская категория</label>
-                        <select class="form-select" id="parentCategory">
+                        <label for="parentCategory"></label><select class="form-select" id="parentCategory">
                             <option value="">Нет (основная категория)</option>
                             <!-- Will be populated dynamically -->
                         </select>
@@ -546,12 +546,12 @@
 
                     <div class="mb-3">
                         <label class="form-label">Иконка</label>
-                        <input type="text" class="form-control" id="categoryIcon" placeholder="📁" maxlength="2">
+                        <label for="categoryIcon"></label><input type="text" class="form-control" id="categoryIcon" placeholder="📁" maxlength="2">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Цвет</label>
-                        <input type="color" class="form-control form-control-color" id="categoryColor" value="#5e72e4">
+                        <label for="categoryColor"></label><input type="color" class="form-control form-control-color" id="categoryColor" value="#5e72e4">
                     </div>
                 </form>
             </div>
@@ -575,24 +575,24 @@
                 <form id="addBudgetForm">
                     <div class="mb-3">
                         <label class="form-label">Название</label>
-                        <input type="text" class="form-control" id="budgetName" required>
+                        <label for="budgetName"></label><input type="text" class="form-control" id="budgetName" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Категория</label>
-                        <select class="form-select" id="budgetCategory" required>
+                        <label for="budgetCategory"></label><select class="form-select" id="budgetCategory" required>
                             <!-- Will be populated dynamically -->
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Сумма</label>
-                        <input type="number" class="form-control" id="budgetAmount" required min="0" step="0.01">
+                        <label for="budgetAmount"></label><input type="number" class="form-control" id="budgetAmount" required min="0" step="0.01">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Период</label>
-                        <select class="form-select" id="budgetPeriod" required>
+                        <label for="budgetPeriod"></label><select class="form-select" id="budgetPeriod" required>
                             <option value="monthly">Месячный</option>
                             <option value="weekly">Недельный</option>
                             <option value="quarterly">Квартальный</option>
@@ -763,7 +763,7 @@
         showLoading(true);
         try {
             const filter = document.getElementById('transactionFilter').value;
-            const url = filter? `/transactions?transaction_type=${filter}` : '/transactions';
+            const url = filter ? `/transactions?transaction_type=${filter}` : '/transactions';
             const transactions = await fetchAPI(url);
             displayTransactions(transactions);
         } catch (error) {
@@ -1102,17 +1102,42 @@
         const categorySelect = document.getElementById('category');
         const filteredCategories = categories.filter(c => c.type === type && c.is_active);
 
-        categorySelect.innerHTML = '<option value="">Выберите категорию</option>' +
-            filteredCategories.map(c =>
-                `<option value="${c.id}">${'  '.repeat(c.level)}${c.icon || '📁'} ${c.name}</option>`
-            ).join('');
+        // Группируем категории
+        const mainCategories = filteredCategories.filter(c => !c.parent_id);
+        const subcategories = filteredCategories.filter(c => c.parent_id);
+
+        let optionsHtml = '<option value="">Выберите категорию</option>';
+
+        mainCategories.forEach(main => {
+            // Добавляем основную категорию
+            optionsHtml += `<option value="${main.id}" style="font-weight: bold;">${main.icon || '📁'} ${main.name}</option>`;
+
+            // Добавляем подкатегории
+            const subs = subcategories.filter(s => s.parent_id === main.id);
+            subs.forEach(sub => {
+                optionsHtml += `<option value="${sub.id}" style="padding-left: 20px;">&nbsp;&nbsp;${sub.icon || '📄'} ${sub.name}</option>`;
+            });
+        });
+
+        categorySelect.innerHTML = optionsHtml;
     }
 
     async function addTransaction() {
         const type = document.querySelector('input[name="transaction_type"]:checked').value;
         const amount = parseFloat(document.getElementById('amount').value);
-        const date = document.getElementById('date').value;
+        const date = document.getElementById('date').value || selectedDate.toISOString().split('T')[0];
         const description = document.getElementById('description').value;
+
+        // Валидация
+        if (!amount || amount <= 0) {
+            showError('Введите корректную сумму');
+            return;
+        }
+
+        if (!date) {
+            showError('Выберите дату');
+            return;
+        }
 
         const transaction = {
             transaction_type: type,
@@ -1125,18 +1150,61 @@
             tag_ids: []
         };
 
+        // Валидация в зависимости от типа
         switch(type) {
             case 'expense':
-                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
-                transaction.category_id = parseInt(document.getElementById('category').value);
+                const accountFrom = document.getElementById('accountFrom').value;
+                const categoryExp = document.getElementById('category').value;
+
+                if (!accountFrom) {
+                    showError('Выберите счет списания');
+                    return;
+                }
+                if (!categoryExp) {
+                    showError('Выберите категорию расхода');
+                    return;
+                }
+
+                transaction.account_from_id = parseInt(accountFrom);
+                transaction.category_id = parseInt(categoryExp);
                 break;
+
             case 'income':
-                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
-                transaction.category_id = parseInt(document.getElementById('category').value);
+                const accountTo = document.getElementById('accountTo').value;
+                const categoryInc = document.getElementById('category').value;
+
+                if (!accountTo) {
+                    showError('Выберите счет пополнения');
+                    return;
+                }
+                if (!categoryInc) {
+                    showError('Выберите категорию дохода');
+                    return;
+                }
+
+                transaction.account_to_id = parseInt(accountTo);
+                transaction.category_id = parseInt(categoryInc);
                 break;
+
             case 'transfer':
-                transaction.account_from_id = parseInt(document.getElementById('accountFrom').value);
-                transaction.account_to_id = parseInt(document.getElementById('accountTo').value);
+                const accFrom = document.getElementById('accountFrom').value;
+                const accTo = document.getElementById('accountTo').value;
+
+                if (!accFrom) {
+                    showError('Выберите счет списания');
+                    return;
+                }
+                if (!accTo) {
+                    showError('Выберите счет пополнения');
+                    return;
+                }
+                if (accFrom === accTo) {
+                    showError('Выберите разные счета для перевода');
+                    return;
+                }
+
+                transaction.account_from_id = parseInt(accFrom);
+                transaction.account_to_id = parseInt(accTo);
                 break;
         }
 
@@ -1144,10 +1212,12 @@
             await postAPI('/transactions', transaction);
             bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
             document.getElementById('addTransactionForm').reset();
+            document.getElementById('date').value = selectedDate.toISOString().split('T')[0];
             loadDashboard();
+            loadTransactions();
             showSuccess('Транзакция добавлена');
         } catch (error) {
-            showError('Ошибка при добавлении транзакции');
+            showError(error);
         }
     }
 
