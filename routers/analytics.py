@@ -30,23 +30,12 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
     # Get current month income and expenses
     current_month_query = """
         SELECT
-            COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
         FROM transactions
-        WHERE date >= date_trunc('month', CURRENT_DATE)
-          AND date < date_trunc('month', CURRENT_DATE) + interval '1 month';
+        WHERE date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '1 month' + INTERVAL '26 days')
+          AND date < (date_trunc('month', CURRENT_DATE) + INTERVAL '26 days');
     """
-
-    # For SQLite compatibility
-    if db.bind.name == "sqlite":
-        current_month_query = """
-            SELECT
-                COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
-            FROM transactions
-            WHERE date >= date('now', 'start of month')
-              AND date < date('now', 'start of month', '+1 month');
-        """
 
     stats_result = db.execute(text(current_month_query)).fetchone()
     total_income = float(stats_result.total_income)
@@ -61,22 +50,11 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
             SUM(amount) AS amount
         FROM transactions
         WHERE type = 'expense'
-          AND date >= CURRENT_DATE - INTERVAL '30 days'
+          AND date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '1 month' + INTERVAL '26 days')
+          AND date < (date_trunc('month', CURRENT_DATE) + INTERVAL '26 days')
         GROUP BY date
         ORDER BY date ASC;
     """
-
-    if db.bind.name == "sqlite":
-        daily_expenses_query = """
-            SELECT
-                date,
-                SUM(amount) AS amount
-            FROM transactions
-            WHERE type = 'expense'
-              AND date >= date('now', '-30 days')
-            GROUP BY date
-            ORDER BY date ASC;
-        """
 
     daily_expenses_result = db.execute(text(daily_expenses_query)).fetchall()
     daily_expenses = [{"date": str(row.date), "amount": float(row.amount)} for row in daily_expenses_result]
@@ -91,27 +69,12 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         FROM transactions t
         JOIN categories c ON t.category_id = c.id
         WHERE t.type = 'expense'
-          AND t.date >= date_trunc('month', CURRENT_DATE)
+          AND t.date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '1 month' + INTERVAL '26 days')
+          AND t.date < (date_trunc('month', CURRENT_DATE) + INTERVAL '26 days')
         GROUP BY c.id, c.name, c.color, c.icon
         ORDER BY amount DESC
         LIMIT 5;
     """
-
-    if db.bind.name == "sqlite":
-        category_expenses_query = """
-            SELECT
-                c.name as category_name,
-                c.color as color,
-                c.icon as icon,
-                SUM(t.amount) AS amount
-            FROM transactions t
-            JOIN categories c ON t.category_id = c.id
-            WHERE t.type = 'expense'
-              AND t.date >= date('now', 'start of month')
-            GROUP BY c.id, c.name, c.color, c.icon
-            ORDER BY amount DESC
-            LIMIT 5;
-        """
 
     category_expenses_result = db.execute(text(category_expenses_query)).fetchall()
     category_breakdown = [

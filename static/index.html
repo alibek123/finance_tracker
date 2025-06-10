@@ -314,9 +314,13 @@
             <button class="btn btn-link text-white me-3" onclick="toggleTheme()" title="Сменить тему">
                 <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
             </button>
-            <span class="navbar-text text-white">
-                <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
-            </span>
+            <div class="navbar-text text-white" style="cursor: pointer;" onclick="showDatePicker()"
+                 title="Изменить дату">
+                <i class="bi bi-calendar3"></i>
+                <span id="currentDate"></span>
+                <input type="date" id="hiddenDatePicker" style="position: absolute; opacity: 0; pointer-events: none;"
+                       onchange="changeSelectedDate(this.value)">
+            </div>
         </div>
     </div>
 </nav>
@@ -518,8 +522,13 @@
             <div class="row">
                 <div class="col-lg-6">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Тренд доходов и расходов</h5>
+                            <select class="form-select form-select-sm w-auto" id="trendPeriod" onchange="loadTrends()">
+                                <option value="daily">По дням</option>
+                                <option value="weekly">По неделям</option>
+                                <option value="monthly" selected>По месяцам</option>
+                            </select>
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
@@ -539,14 +548,50 @@
                     </div>
                 </div>
             </div>
+
             <div class="row mt-4">
-                <div class="col-12">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Сравнение по месяцам</h5>
+                        </div>
+                        <div class="card-body" id="monthlyComparisonContent">
+                            <!-- Monthly comparison will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Распределение по счетам</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="accountBalanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">Структура расходов по категориям</h5>
                         </div>
                         <div class="card-body" id="categoryAnalytics">
                             <!-- Category analytics will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Топ расходов за месяц</h5>
+                        </div>
+                        <div class="card-body" id="topExpensesContent">
+                            <!-- Top expenses will be loaded here -->
                         </div>
                     </div>
                 </div>
@@ -1066,46 +1111,8 @@
     let trendChart = null;
     let selectedTags = [];
     let selectedDate = new Date();
-
-    // Theme management
-    function initTheme() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
-    }
-
-    function toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeIcon(newTheme);
-
-        // Update charts colors
-        updateChartsTheme();
-    }
-
-    function updateThemeIcon(theme) {
-        const icon = document.getElementById('themeIcon');
-        icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
-    }
-
-    function updateChartsTheme() {
-        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
-        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
-
-        // Update all charts
-        [expenseChart, categoryChart, trendChart].forEach(chart => {
-            if (chart) {
-                chart.options.plugins.legend.labels.color = textColor;
-                chart.options.scales?.x && (chart.options.scales.x.ticks.color = textColor);
-                chart.options.scales?.y && (chart.options.scales.y.ticks.color = textColor);
-                chart.options.scales?.x && (chart.options.scales.x.grid.color = gridColor);
-                chart.options.scales?.y && (chart.options.scales.y.grid.color = gridColor);
-                chart.update();
-            }
-        });
-    }
+    let currentSelectedDate = new Date(); // For calendar date selection
+    let accountBalanceChart = null;
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -1116,15 +1123,11 @@
         loadTags();
 
         // Set current date
-        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+        updateCurrentDateDisplay();
 
-        // Set default date in form
-        document.getElementById('date').valueAsDate = new Date();
-        document.getElementById('recurringStartDate').valueAsDate = new Date();
+        // Set default date in form to selected date
+        document.getElementById('date').value = currentSelectedDate.toISOString().split('T')[0];
+        document.getElementById('recurringStartDate').value = currentSelectedDate.toISOString().split('T')[0];
 
         // Transaction type change handler
         document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
@@ -1159,6 +1162,68 @@
         document.getElementById('filterEndDate').addEventListener('change', searchTransactions);
     });
 
+    // Date management functions
+    function updateCurrentDateDisplay() {
+        document.getElementById('currentDate').textContent = currentSelectedDate.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    }
+
+    function showDatePicker() {
+        document.getElementById('hiddenDatePicker').value = currentSelectedDate.toISOString().split('T')[0];
+        document.getElementById('hiddenDatePicker').click();
+    }
+
+    function changeSelectedDate(dateValue) {
+        currentSelectedDate = new Date(dateValue + 'T00:00:00');
+        updateCurrentDateDisplay();
+        // Update default date in forms
+        document.getElementById('date').value = dateValue;
+        document.getElementById('recurringStartDate').value = dateValue;
+    }
+
+    // Theme management
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+
+        // Update charts colors
+        updateChartsTheme();
+    }
+
+    function updateThemeIcon(theme) {
+        const icon = document.getElementById('themeIcon');
+        icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    }
+
+    function updateChartsTheme() {
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+
+        // Update all charts
+        [expenseChart, categoryChart, trendChart, accountBalanceChart].forEach(chart => {
+            if (chart) {
+                chart.options.plugins.legend.labels.color = textColor;
+                chart.options.scales?.x && (chart.options.scales.x.ticks.color = textColor);
+                chart.options.scales?.y && (chart.options.scales.y.ticks.color = textColor);
+                chart.options.scales?.x && (chart.options.scales.x.grid.color = gridColor);
+                chart.options.scales?.y && (chart.options.scales.y.grid.color = gridColor);
+                chart.update();
+            }
+        });
+    }
+
     // Search transactions
     async function searchTransactions() {
         const searchQuery = document.getElementById('transactionSearch').value;
@@ -1168,7 +1233,7 @@
 
         showLoading(true);
         try {
-            let url = '/search/transactions?limit=100';
+            let url = '/data/search/transactions?limit=100';
 
             if (searchQuery) url += `&q=${encodeURIComponent(searchQuery)}`;
             if (typeFilter) url += `&transaction_types=${typeFilter}`;
@@ -1231,72 +1296,64 @@
             });
 
             // Create array of last 30 days
-            const today = new Date();
-            const last30Days = [];
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
-                last30Days.push({
-                    date: dateStr,
-                    amount: expensesByDate[dateStr] || 0
-                });
-            }
+            const daily = stats.daily_expenses.map(d => {
+              const [y, m, day] = d.date.split("-").map(Number);
+              return { date: new Date(y, m - 1, day), amount: d.amount };
+            });
+
+            const labels = daily.map(d =>
+              d.date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+            );
+            const dataPoints = daily.map(d => d.amount);
 
             expenseChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: last30Days.map(d => new Date(d.date).toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})),
-                    datasets: [{
-                        label: 'Расходы',
-                        data: last30Days.map(d => d.amount),
-                        borderColor: '#f5365c',
-                        backgroundColor: 'rgba(245, 54, 92, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return 'Расходы: ' + formatMoney(context.parsed.y);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return formatMoney(value);
-                                },
-                                color: textColor
-                            },
-                            grid: {
-                                color: gridColor
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: textColor,
-                                maxRotation: 45,
-                                minRotation: 0
-                            },
-                            grid: {
-                                color: gridColor,
-                                display: false
-                            }
-                        }
+              type: "line",
+              data: {
+                labels,
+                datasets: [{
+                  label: "Расходы",
+                  data: dataPoints,
+                  borderColor: "#f5365c",
+                  backgroundColor: "rgba(245, 54, 92, 0.1)",
+                  tension: 0.4,
+                  fill: true
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        return "Расходы: " + formatMoney(context.parsed.y);
+                      }
                     }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: value => formatMoney(value),
+                      color: textColor
+                    },
+                    grid: { color: gridColor }
+                  },
+                  x: {
+                    ticks: {
+                      color: textColor,
+                      maxRotation: 45,
+                      minRotation: 0
+                    },
+                    grid: {
+                      color: gridColor,
+                      display: false
+                    }
+                  }
                 }
+              }
             });
         }
 
@@ -1419,20 +1476,50 @@
         showLoading(true);
         try {
             // Load trends
-            const trends = await fetchAPI('/analytics/trends');
-            displayTrends(trends);
+            await loadTrends();
 
             // Load category analytics
             const categoryAnalytics = await fetchAPI('/analytics/categories?transaction_type=expense');
             displayCategoryAnalytics(categoryAnalytics);
 
-            // Load forecast
-            const forecast = await fetchAPI('/analytics/forecast?months_ahead=3');
-            displayForecast(forecast);
+            // Load forecast - try detailed first, then simple
+            try {
+                const forecast = await fetchAPI('/analytics/forecast/detailed?months_ahead=3');
+                displayForecast(forecast);
+            } catch (error) {
+                // If detailed forecast fails, try simple forecast
+                const simpleForecast = await fetchAPI('/analytics/forecast?months_ahead=3');
+                displayForecast(simpleForecast);
+            }
+
+            // Load monthly comparison
+            const monthlyComparison = await fetchAPI('/analytics/monthly-comparison?months_back=3');
+            displayMonthlyComparison(monthlyComparison);
+
+            // Load account balances
+            const accountBalances = await fetchAPI('/analytics/account-balances');
+            displayAccountBalances(accountBalances);
+
+            // Load top expenses
+            const topExpenses = await fetchAPI('/analytics/top-expenses?limit=10&days=30');
+            displayTopExpenses(topExpenses);
+
         } catch (error) {
             showError('Ошибка загрузки аналитики');
         } finally {
             showLoading(false);
+        }
+    }
+
+    async function loadTrends() {
+        const period = document.getElementById('trendPeriod')?.value || 'monthly';
+        const months = period === 'daily' ? 1 : 6;
+
+        try {
+            const trends = await fetchAPI(`/analytics/trends?period=${period}&months=${months}`);
+            displayTrends(trends);
+        } catch (error) {
+            console.error('Error loading trends:', error);
         }
     }
 
@@ -1448,7 +1535,7 @@
                         </div>
                         <div class="ms-3">
                             <h6 class="text-muted mb-1">Общий баланс</h6>
-                            <h4 class="mb-0">${formatMoney(stats.total_balance)}</h4>
+                            <h4 class="mb-0">${formatMoney(stats.total_balance || 0)}</h4>
                         </div>
                     </div>
                 </div>
@@ -1461,7 +1548,7 @@
                         </div>
                         <div class="ms-3">
                             <h6 class="text-muted mb-1">Доходы за месяц</h6>
-                            <h4 class="mb-0">${formatMoney(stats.total_income)}</h4>
+                            <h4 class="mb-0">${formatMoney(stats.total_income || 0)}</h4>
                         </div>
                     </div>
                 </div>
@@ -1474,7 +1561,7 @@
                         </div>
                         <div class="ms-3">
                             <h6 class="text-muted mb-1">Расходы за месяц</h6>
-                            <h4 class="mb-0">${formatMoney(stats.total_expenses)}</h4>
+                            <h4 class="mb-0">${formatMoney(stats.total_expense || 0)}</h4>
                         </div>
                     </div>
                 </div>
@@ -1487,7 +1574,7 @@
                         </div>
                         <div class="ms-3">
                             <h6 class="text-muted mb-1">Сбережения за месяц</h6>
-                            <h4 class="mb-0">${formatMoney(stats.net_savings)}</h4>
+                            <h4 class="mb-0">${formatMoney(stats.net_savings || stats.net_balance || 0)}</h4>
                         </div>
                     </div>
                 </div>
@@ -1555,7 +1642,10 @@
         }
 
         container.innerHTML = budgets.map(b => {
-            const progressColor = b.usage_percentage > 80 ? 'danger' : (b.usage_percentage > 60 ? 'warning' : 'success');
+            // Calculate usage percentage if not provided
+            const usagePercentage = b.usage_percentage || (b.spent_amount && b.amount ? Math.round((b.spent_amount / b.amount) * 100) : 0);
+            const progressColor = usagePercentage > 80 ? 'danger' : (usagePercentage > 60 ? 'warning' : 'success');
+
             return `
                 <div class="col-lg-6">
                     <div class="card mb-3">
@@ -1563,22 +1653,44 @@
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
                                     <h6 class="mb-1">${b.name}</h6>
-                                    <small class="text-muted">${b.category_name}</small>
+                                    <small class="text-muted">${b.category_name || 'Категория'}</small>
                                 </div>
-                                <span class="badge bg-${progressColor}">${b.usage_percentage}%</span>
+                                <div>
+                                    <span class="badge bg-${progressColor}">${usagePercentage}%</span>
+                                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteBudget(${b.id})" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="d-flex justify-content-between mb-1">
-                                <small>Потрачено: ${formatMoney(b.spent_amount)}</small>
+                                <small>Потрачено: ${formatMoney(b.spent_amount || 0)}</small>
                                 <small>Лимит: ${formatMoney(b.amount)}</small>
                             </div>
                             <div class="budget-progress">
-                                <div class="budget-progress-bar bg-${progressColor}" style="width: ${b.usage_percentage}%"></div>
+                                <div class="budget-progress-bar bg-${progressColor}" style="width: ${Math.min(usagePercentage, 100)}%"></div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">${b.period === 'monthly' ? 'Месячный' :
+                                    b.period === 'weekly' ? 'Недельный' :
+                                    b.period === 'quarterly' ? 'Квартальный' :
+                                    b.period === 'yearly' ? 'Годовой' : b.period}</small>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        // Load budget summaries for each budget
+        budgets.forEach(async (budget) => {
+            try {
+                const summary = await fetchAPI(`/budgets/${budget.id}/summary`);
+                // Update the budget card with actual spent amount
+                // This could be implemented if needed
+            } catch (error) {
+                console.error(`Error loading summary for budget ${budget.id}:`, error);
+            }
+        });
     }
 
     function displayGoals(goals) {
@@ -1588,37 +1700,43 @@
             return;
         }
 
-        container.innerHTML = goals.map(g => `
-            <div class="col-lg-6">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <h6 class="mb-1">${g.name}</h6>
-                                ${g.target_date ? `<small class="text-muted">До ${formatDate(g.target_date)}</small>` : ''}
+        container.innerHTML = goals.map(g => {
+            const progressPercentage = g.progress_percentage || (g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0);
+
+            return `
+                <div class="col-lg-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">${g.name}</h6>
+                                    ${g.target_date ? `<small class="text-muted">До ${formatDate(g.target_date)}</small>` : ''}
+                                </div>
+                                <span class="badge bg-primary">${progressPercentage}%</span>
                             </div>
-                            <span class="badge bg-primary">${g.progress_percentage || 0}%</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <small>Накоплено: ${formatMoney(g.current_amount)}</small>
-                            <small>Цель: ${formatMoney(g.target_amount)}</small>
-                        </div>
-                        <div class="goal-progress">
-                            <div class="goal-progress-bar" style="width: ${g.progress_percentage || 0}%"></div>
-                        </div>
-                        ${g.account_name ? `<small class="text-muted mt-2 d-block">${g.account_icon || '💳'} ${g.account_name}</small>` : ''}
-                        <div class="mt-3">
-                            <button class="btn btn-sm btn-success" onclick="showContributeModal(${g.id})">
-                                <i class="bi bi-plus-circle"></i> Пополнить
-                            </button>
-                            ${!g.is_achieved ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteGoal(${g.id})">
-                                <i class="bi bi-trash"></i>
-                            </button>` : '<span class="badge bg-success ms-2">Достигнута!</span>'}
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>Накоплено: ${formatMoney(g.current_amount)}</small>
+                                <small>Цель: ${formatMoney(g.target_amount)}</small>
+                            </div>
+                            <div class="goal-progress">
+                                <div class="goal-progress-bar" style="width: ${Math.min(progressPercentage, 100)}%"></div>
+                            </div>
+                            ${g.account_name ? `<small class="text-muted mt-2 d-block">${g.account_icon || '💳'} ${g.account_name}</small>` : ''}
+                            <div class="mt-3">
+                                ${!g.is_achieved ? `
+                                    <button class="btn btn-sm btn-success" onclick="showContributeModal(${g.id})">
+                                        <i class="bi bi-plus-circle"></i> Пополнить
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteGoal(${g.id})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                ` : '<span class="badge bg-success">Достигнута!</span>'}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function displayRecurringTransactions(recurring) {
@@ -1640,6 +1758,9 @@
                             </div>
                             <div class="text-end">
                                 <div class="amount-${r.type}">${formatMoney(r.amount)}</div>
+                                <button class="btn btn-sm btn-outline-danger mt-1" onclick="deleteRecurring(${r.id})" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="mt-2">
@@ -1722,10 +1843,22 @@
         const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
 
+        // Format labels based on period type
+        const period = document.getElementById('trendPeriod')?.value || 'monthly';
+        let labels = trends.map(t => {
+            if (period === 'daily') {
+                return new Date(t.period).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+            } else if (period === 'weekly') {
+                return `Неделя ${t.period.split('-')[1]}`;
+            } else {
+                return formatMonth(t.period);
+            }
+        });
+
         trendChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: trends.map(t => t.period),
+                labels: labels,
                 datasets: [
                     {
                         label: 'Доходы',
@@ -1751,6 +1884,13 @@
                         labels: {
                             color: textColor
                         }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatMoney(context.parsed.y);
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -1758,7 +1898,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return value.toLocaleString('ru-RU') + ' ₸';
+                                return formatMoney(value);
                             },
                             color: textColor
                         },
@@ -1768,7 +1908,9 @@
                     },
                     x: {
                         ticks: {
-                            color: textColor
+                            color: textColor,
+                            maxRotation: 45,
+                            minRotation: 0
                         },
                         grid: {
                             color: gridColor
@@ -1802,24 +1944,197 @@
 
     function displayForecast(forecast) {
         const container = document.getElementById('forecastContent');
-        container.innerHTML = `
-            <div class="mb-4">
-                <h6>Прогноз на ${forecast.months_ahead} ${getMonthsWord(forecast.months_ahead)}</h6>
-                <h3 class="text-danger">${formatMoney(forecast.total_forecast)}</h3>
-            </div>
-            <div>
-                <h6 class="mb-3">По категориям:</h6>
-                ${forecast.by_category.map(c => `
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex align-items-center">
-                            <span style="color: ${c.color}">${c.icon || '📁'}</span>
-                            <span class="ms-2">${c.name}</span>
+
+        // If forecast is empty or no detailed data
+        if (!forecast || (Array.isArray(forecast) && forecast.length === 0)) {
+            container.innerHTML = '<p class="text-muted">Нет данных для прогноза</p>';
+            return;
+        }
+
+        // If forecast is an array (simple forecast)
+        if (Array.isArray(forecast)) {
+            const totalExpenses = forecast.reduce((sum, f) => sum + f.expense, 0);
+            const totalIncome = forecast.reduce((sum, f) => sum + f.income, 0);
+
+            container.innerHTML = `
+                <div class="mb-4">
+                    <h6>Прогноз на ${forecast.length} ${getMonthsWord(forecast.length)}</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Доходы:</small>
+                            <h5 class="text-success">${formatMoney(totalIncome)}</h5>
                         </div>
-                        <small>${formatMoney(c.forecast_total)}</small>
+                        <div class="col-6">
+                            <small class="text-muted">Расходы:</small>
+                            <h5 class="text-danger">${formatMoney(totalExpenses)}</h5>
+                        </div>
                     </div>
-                `).join('')}
+                </div>
+                <div>
+                    <h6 class="mb-3">По месяцам:</h6>
+                    ${forecast.map(f => `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>${f.month}</span>
+                            <div>
+                                <small class="text-success me-2">+${formatMoney(f.income)}</small>
+                                <small class="text-danger">-${formatMoney(f.expense)}</small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        // If forecast has detailed structure
+        else if (forecast.total_forecast !== undefined) {
+            container.innerHTML = `
+                <div class="mb-4">
+                    <h6>Прогноз на ${forecast.months_ahead} ${getMonthsWord(forecast.months_ahead)}</h6>
+                    <h3 class="text-danger">${formatMoney(forecast.total_forecast)}</h3>
+                </div>
+                <div>
+                    <h6 class="mb-3">По категориям:</h6>
+                    ${forecast.by_category.map(c => `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center">
+                                <span style="color: ${c.color}">${c.icon || '📁'}</span>
+                                <span class="ms-2">${c.name}</span>
+                            </div>
+                            <small>${formatMoney(c.forecast_total)}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    function displayMonthlyComparison(data) {
+        const container = document.getElementById('monthlyComparisonContent');
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="text-muted">Нет данных для сравнения</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Месяц</th>
+                            <th class="text-end">Доходы</th>
+                            <th class="text-end">Расходы</th>
+                            <th class="text-end">Баланс</th>
+                            <th class="text-end">Сберегли</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(month => `
+                            <tr>
+                                <td>${formatMonth(month.month)}</td>
+                                <td class="text-end text-success">${formatMoney(month.income)}</td>
+                                <td class="text-end text-danger">${formatMoney(month.expenses)}</td>
+                                <td class="text-end ${month.net >= 0 ? 'text-success' : 'text-danger'}">${formatMoney(month.net)}</td>
+                                <td class="text-end">${month.savings_rate}%</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
+    }
+
+    function displayAccountBalances(data) {
+        const ctx = document.getElementById('accountBalanceChart').getContext('2d');
+
+        if (accountBalanceChart) accountBalanceChart.destroy();
+
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+
+        accountBalanceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.accounts.map(a => a.name),
+                datasets: [{
+                    data: data.accounts.map(a => a.balance),
+                    backgroundColor: data.accounts.map(a => a.color || '#5e72e4'),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: textColor,
+                            padding: 15,
+                            font: {
+                                size: 12
+                            },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const dataset = data.datasets[0];
+                                        const value = dataset.data[i];
+                                        const account = chart.options.accountData[i];
+                                        return {
+                                            text: `${account.icon || '💳'} ${label}: ${formatMoney(value)}`,
+                                            fillStyle: dataset.backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const account = data.accounts[context.dataIndex];
+                                return `${account.name}: ${formatMoney(context.parsed)} (${account.percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                accountData: data.accounts
+            }
+        });
+    }
+
+    function displayTopExpenses(expenses) {
+        const container = document.getElementById('topExpensesContent');
+        if (!expenses || expenses.length === 0) {
+            container.innerHTML = '<p class="text-muted">Нет расходов за период</p>';
+            return;
+        }
+
+        container.innerHTML = expenses.map((expense, index) => `
+            <div class="d-flex justify-content-between align-items-center mb-3 ${index < expenses.length - 1 ? 'pb-3 border-bottom' : ''}">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-danger me-2">${index + 1}</span>
+                    <div>
+                        <div class="fw-semibold">${expense.description || expense.category.name}</div>
+                        <small class="text-muted">
+                            <span style="color: ${expense.category.color}">${expense.category.icon || '📁'}</span>
+                            ${expense.category.name} • ${formatDate(expense.date)}
+                        </small>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-semibold text-danger">${formatMoney(expense.amount)}</div>
+                    <small class="text-muted">${expense.account}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function formatMonth(monthString) {
+        const [year, month] = monthString.split('-');
+        const date = new Date(year, parseInt(month) - 1);
+        return date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
     }
 
     // Form handlers
@@ -1855,6 +2170,7 @@
                 break;
         }
     }
+
 
     function updateRecurringForm() {
         const type = document.querySelector('input[name="recurring_type"]:checked').value;

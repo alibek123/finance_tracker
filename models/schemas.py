@@ -263,12 +263,26 @@ class RecurringTransaction(RecurringTransactionBase):
         from_attributes = True
 
 
+class DailyExpenseItem(BaseModel):
+    date: date
+    amount: float
+
+
+class CategoryBreakdownItem(BaseModel):
+    category_name: str
+    amount: float
+    color: Optional[str]
+    icon: Optional[str]
+
+
 class DashboardStats(BaseModel):
     total_income: float
     total_expense: float
     net_balance: float
     total_balance: Optional[float] = None
     net_savings: Optional[float] = None
+    daily_expenses: List[DailyExpenseItem]
+    category_breakdown: List[CategoryBreakdownItem]
 
 
 class TrendData(BaseModel):
