@@ -47,6 +47,59 @@
             font-weight: 600;
         }
 
+        .navbar-date-picker {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+            z-index: 20;
+            margin: 0;
+            padding: 0;
+            border: none;
+        }
+
+        .navbar-date-container {
+            position: relative;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s;
+            min-width: 160px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .navbar-date-container:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: scale(1.02);
+        }
+
+        .navbar-date-container:active {
+            transform: scale(0.98);
+        }
+
+
+        .navbar-date-container.not-today {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .navbar-date-container.not-today::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border-radius: 0.5rem;
+            opacity: 0.3;
+            z-index: -1;
+        }
+
         .card {
             background-color: var(--bg-secondary);
             color: var(--text-primary);
@@ -314,13 +367,20 @@
             <button class="btn btn-link text-white me-3" onclick="toggleTheme()" title="Сменить тему">
                 <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
             </button>
-            <div class="navbar-text text-white" style="cursor: pointer;" onclick="showDatePicker()"
-                 title="Изменить дату">
+            <div class="navbar-text text-white me-3 navbar-date-container"
+                 id="navbarDate"
+                 title="Изменить дату"
+                 onclick="openDatePicker()">
                 <i class="bi bi-calendar3"></i>
                 <span id="currentDate"></span>
-                <input type="date" id="hiddenDatePicker" style="position: absolute; opacity: 0; pointer-events: none;"
-                       onchange="changeSelectedDate(this.value)">
+                <input type="date"
+                       id="hiddenDatePicker"
+                       onchange="changeSelectedDate(this.value)"
+                       style="position: absolute; opacity: 0; pointer-events: none; z-index: -1;">
             </div>
+            <button class="btn btn-link text-white p-1" onclick="setTodayDate()" title="Вернуться к сегодняшней дате">
+                <i class="bi bi-house"></i>
+            </button>
         </div>
     </div>
 </nav>
@@ -1111,11 +1171,17 @@
     let trendChart = null;
     let selectedTags = [];
     let selectedDate = new Date();
-    let currentSelectedDate = new Date(); // For calendar date selection
+    // Правильная инициализация currentSelectedDate без проблем с часовыми поясами
+    let currentSelectedDate = (() => {
+        const today = new Date();
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    })();
     let accountBalanceChart = null;
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...'); // Отладка
+
         initTheme();
         loadDashboard();
         loadAccounts();
@@ -1125,9 +1191,19 @@
         // Set current date
         updateCurrentDateDisplay();
 
-        // Set default date in form to selected date
-        document.getElementById('date').value = currentSelectedDate.toISOString().split('T')[0];
-        document.getElementById('recurringStartDate').value = currentSelectedDate.toISOString().split('T')[0];
+        // Set default date in form to selected date if forms exist
+        const dateField = document.getElementById('date');
+        const recurringStartDateField = document.getElementById('recurringStartDate');
+
+        if (dateField) {
+            dateField.value = formatDateForInput(currentSelectedDate);
+        }
+        if (recurringStartDateField) {
+            recurringStartDateField.value = formatDateForInput(currentSelectedDate);
+        }
+
+        // The date picker now works directly via the input overlay
+        console.log('Calendar should now work by clicking on the date area');
 
         // Transaction type change handler
         document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
@@ -1160,28 +1236,149 @@
         document.getElementById('transactionFilter').addEventListener('change', searchTransactions);
         document.getElementById('filterStartDate').addEventListener('change', searchTransactions);
         document.getElementById('filterEndDate').addEventListener('change', searchTransactions);
+
+        console.log('Initialization complete'); // Отладка
     });
+
+    // Make functions globally available for onclick handlers
+    window.showDatePicker = showDatePicker;
+    window.setTodayDate = setTodayDate;
+    window.changeSelectedDate = changeSelectedDate;
+    window.toggleTheme = toggleTheme;
+    window.showAddTransactionModal = showAddTransactionModal;
+
+    function openDatePicker() {
+            const datePicker = document.getElementById('hiddenDatePicker');
+            datePicker.value = currentSelectedDate.toISOString().split('T')[0];
+            datePicker.focus();
+            datePicker.click();
+
+            // Для некоторых браузеров может потребоваться:
+            if (datePicker.showPicker) {
+                datePicker.showPicker();
+            }
+        }
+
 
     // Date management functions
     function updateCurrentDateDisplay() {
-        document.getElementById('currentDate').textContent = currentSelectedDate.toLocaleDateString('ru-RU', {
+        const dateText = currentSelectedDate.toLocaleDateString('ru-RU', {
             day: 'numeric',
             month: 'long',
             year: 'numeric'
         });
+
+        const currentDateElement = document.getElementById('currentDate');
+        if (currentDateElement) {
+            currentDateElement.textContent = dateText;
+        }
+
+        // Check if selected date is today
+        const today = new Date();
+        const isToday = currentSelectedDate.toDateString() === today.toDateString();
+
+        const navbarDate = document.getElementById('navbarDate');
+        if (navbarDate) {
+            if (isToday) {
+                navbarDate.classList.remove('not-today');
+                navbarDate.title = 'Изменить дату (сегодня)';
+            } else {
+                navbarDate.classList.add('not-today');
+                navbarDate.title = 'Изменить дату (не сегодня - нажмите кнопку "дом" чтобы вернуться к сегодняшней дате)';
+            }
+        }
+
+        // Update the hidden date picker value using our safe formatting function
+        const hiddenDatePicker = document.getElementById('hiddenDatePicker');
+        if (hiddenDatePicker) {
+            hiddenDatePicker.value = formatDateForInput(currentSelectedDate);
+        }
     }
 
     function showDatePicker() {
-        document.getElementById('hiddenDatePicker').value = currentSelectedDate.toISOString().split('T')[0];
-        document.getElementById('hiddenDatePicker').click();
+        console.log('showDatePicker called'); // Отладка
+        try {
+            const hiddenDatePicker = document.getElementById('hiddenDatePicker');
+            if (hiddenDatePicker) {
+                hiddenDatePicker.value = currentSelectedDate.toISOString().split('T')[0];
+                hiddenDatePicker.focus(); // Попробуем фокус вместо клика
+                hiddenDatePicker.click();
+                console.log('Date picker focused and clicked'); // Отладка
+            } else {
+                console.error('Hidden date picker not found');
+            }
+        } catch (error) {
+            console.error('Error in showDatePicker:', error);
+        }
     }
 
     function changeSelectedDate(dateValue) {
-        currentSelectedDate = new Date(dateValue + 'T00:00:00');
-        updateCurrentDateDisplay();
-        // Update default date in forms
-        document.getElementById('date').value = dateValue;
-        document.getElementById('recurringStartDate').value = dateValue;
+        console.log('changeSelectedDate called with:', dateValue); // Отладка
+        try {
+            // Исправляем проблему с часовыми поясами
+            const dateParts = dateValue.split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1; // месяцы в JS начинаются с 0
+            const day = parseInt(dateParts[2]);
+
+            currentSelectedDate = new Date(year, month, day);
+            console.log('Created date object:', currentSelectedDate); // Отладка
+
+            updateCurrentDateDisplay();
+
+            // Update default date in forms if they exist
+            const dateField = document.getElementById('date');
+            const recurringStartDateField = document.getElementById('recurringStartDate');
+
+            if (dateField) {
+                dateField.value = dateValue;
+            }
+            if (recurringStartDateField) {
+                recurringStartDateField.value = dateValue;
+            }
+            console.log('Selected date updated to:', dateValue); // Отладка
+        } catch (error) {
+            console.error('Error in changeSelectedDate:', error);
+        }
+    }
+
+    function setTodayDate() {
+        console.log('setTodayDate called'); // Отладка
+        try {
+            const today = new Date();
+            currentSelectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            updateCurrentDateDisplay();
+
+            const todayString = formatDateForInput(currentSelectedDate);
+
+            // Update hidden date picker
+            const hiddenDatePicker = document.getElementById('hiddenDatePicker');
+            if (hiddenDatePicker) {
+                hiddenDatePicker.value = todayString;
+            }
+
+            // Update forms if they exist
+            const dateField = document.getElementById('date');
+            const recurringStartDateField = document.getElementById('recurringStartDate');
+
+            if (dateField) {
+                dateField.value = todayString;
+            }
+            if (recurringStartDateField) {
+                recurringStartDateField.value = todayString;
+            }
+            console.log('Date set to today:', todayString); // Отладка
+        } catch (error) {
+            console.error('Error in setTodayDate:', error);
+        }
+    }
+
+    // Новая функция для правильного форматирования даты
+    function formatDateForInput(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     // Theme management
@@ -1680,17 +1877,6 @@
                 </div>
             `;
         }).join('');
-
-        // Load budget summaries for each budget
-        budgets.forEach(async (budget) => {
-            try {
-                const summary = await fetchAPI(`/budgets/${budget.id}/summary`);
-                // Update the budget card with actual spent amount
-                // This could be implemented if needed
-            } catch (error) {
-                console.error(`Error loading summary for budget ${budget.id}:`, error);
-            }
-        });
     }
 
     function displayGoals(goals) {
@@ -1831,7 +2017,7 @@
         container.innerHTML = tags.map(t => `
             <span class="tag-badge" style="background-color: ${t.color}20; color: ${t.color}"
                   onclick="deleteTag(${t.id})" title="Нажмите для удаления">
-                ${t.name} <small>(${t.usage_count})</small>
+                ${t.name} <small>(${t.usage_count || 0})</small>
             </span>
         `).join('');
     }
@@ -2171,7 +2357,6 @@
         }
     }
 
-
     function updateRecurringForm() {
         const type = document.querySelector('input[name="recurring_type"]:checked').value;
         const label = document.querySelector('#recurringAccountFrom label');
@@ -2189,14 +2374,16 @@
             `<option value="${a.id}">${a.icon || '💳'} ${a.name} (${formatMoney(a.current_balance)})</option>`
         ).join('');
 
-        accountFromSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
-        accountToSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
-        recurringAccountSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
-        goalAccountSelect.innerHTML = '<option value="">Без привязки к счету</option>' + options;
+        if (accountFromSelect) accountFromSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        if (accountToSelect) accountToSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        if (recurringAccountSelect) recurringAccountSelect.innerHTML = '<option value="">Выберите счет</option>' + options;
+        if (goalAccountSelect) goalAccountSelect.innerHTML = '<option value="">Без привязки к счету</option>' + options;
     }
 
     function updateCategorySelect(type = 'expense', selectId = 'category') {
         const categorySelect = document.getElementById(selectId);
+        if (!categorySelect) return;
+
         const filteredCategories = categories.filter(c => c.type === type && c.is_active);
 
         const mainCategories = filteredCategories.filter(c => !c.parent_id);
@@ -2220,22 +2407,26 @@
         const container = document.getElementById('transactionTags');
         const selectedContainer = document.getElementById('selectedTags');
 
-        container.innerHTML = tags.map(t => `
-            <span class="tag-badge" id="tag-${t.id}"
-                  style="background-color: ${t.color}20; color: ${t.color}"
-                  onclick="toggleTag(${t.id})">
-                ${t.name}
-            </span>
-        `).join('');
+        if (container) {
+            container.innerHTML = tags.map(t => `
+                <span class="tag-badge" id="tag-${t.id}"
+                      style="background-color: ${t.color}20; color: ${t.color}"
+                      onclick="toggleTag(${t.id})">
+                    ${t.name}
+                </span>
+            `).join('');
+        }
 
         // Update filter tags
-        selectedContainer.innerHTML = tags.map(t => `
-            <span class="tag-badge" id="filter-tag-${t.id}"
-                  style="background-color: ${t.color}20; color: ${t.color}"
-                  onclick="toggleFilterTag(${t.id})">
-                ${t.name}
-            </span>
-        `).join('');
+        if (selectedContainer) {
+            selectedContainer.innerHTML = tags.map(t => `
+                <span class="tag-badge" id="filter-tag-${t.id}"
+                      style="background-color: ${t.color}20; color: ${t.color}"
+                      onclick="toggleFilterTag(${t.id})">
+                    ${t.name}
+                </span>
+            `).join('');
+        }
     }
 
     function toggleTag(tagId) {
@@ -2355,7 +2546,8 @@
             await postAPI('/transactions', transaction);
             bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
             document.getElementById('addTransactionForm').reset();
-            document.getElementById('date').valueAsDate = new Date();
+            // Reset date to selected calendar date using safe formatting
+            document.getElementById('date').value = formatDateForInput(currentSelectedDate);
             selectedTags = [];
             updateTagsSelect();
             loadDashboard();
@@ -2512,7 +2704,7 @@
         }
 
         try {
-            await postAPI(`/savings-goals/${goalId}/contribute?amount=${parsedAmount}`);
+            await postAPI(`/savings-goals/${goalId}/deposit?amount=${parsedAmount}`);
             loadGoals();
             showSuccess('Цель пополнена');
         } catch (error) {
@@ -2560,12 +2752,36 @@
         }
     }
 
+    async function deleteRecurring(id) {
+        if (!confirm('Вы уверены, что хотите удалить эту повторяющуюся транзакцию?')) return;
+
+        try {
+            await deleteAPI(`/recurring-transactions/${id}`);
+            loadRecurringTransactions();
+            showSuccess('Повторяющаяся транзакция удалена');
+        } catch (error) {
+            showError('Ошибка при удалении повторяющейся транзакции');
+        }
+    }
+
+    async function deleteBudget(id) {
+        if (!confirm('Вы уверены, что хотите удалить этот бюджет?')) return;
+
+        try {
+            await deleteAPI(`/budgets/${id}`);
+            loadBudgets();
+            showSuccess('Бюджет удален');
+        } catch (error) {
+            showError('Ошибка при удалении бюджета');
+        }
+    }
+
     // Export/Import functions
     async function exportData(format) {
         const startDate = document.getElementById('filterStartDate').value;
         const endDate = document.getElementById('filterEndDate').value;
 
-        let url = `/export/${format}?`;
+        let url = `/data/export/${format}?`;
         if (startDate) url += `start_date=${startDate}&`;
         if (endDate) url += `end_date=${endDate}`;
 
@@ -2586,7 +2802,7 @@
 
         showLoading(true);
         try {
-            const response = await fetch(API_URL + '/import', {
+            const response = await fetch(API_URL + '/data/import', {
                 method: 'POST',
                 body: formData
             });
@@ -2619,6 +2835,8 @@
         updateTransactionForm();
         selectedTags = [];
         updateTagsSelect();
+        // Set the selected date from calendar using safe formatting
+        document.getElementById('date').value = formatDateForInput(currentSelectedDate);
         modal.show();
     }
 
@@ -2669,6 +2887,8 @@
     function showAddRecurringModal() {
         const modal = new bootstrap.Modal(document.getElementById('addRecurringModal'));
         updateRecurringForm();
+        // Set the selected date from calendar using safe formatting
+        document.getElementById('recurringStartDate').value = formatDateForInput(currentSelectedDate);
         modal.show();
     }
 
@@ -2796,4 +3016,4 @@
     }
 </script>
 </body>
-</html>
+</html>>
