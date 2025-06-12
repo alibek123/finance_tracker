@@ -165,7 +165,7 @@ def adjust_account_balance(
             category_id = new_cat[0]
 
         # Создаем транзакцию корректировки
-        transaction_type = "income" if difference > 0 else "expense"
+        transaction_type = "correction"
         # Determine which account field to use for the adjustment transaction
         account_from_id = account_id if difference < 0 else None
         account_to_id = account_id if difference > 0 else None
