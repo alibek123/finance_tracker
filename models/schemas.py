@@ -91,32 +91,6 @@ class TransactionBase(BaseModel):
         populate_by_name = True
         use_enum_values = True
 
-    @field_validator('account_from_id', 'account_to_id', 'category_id')
-    @classmethod
-    def validate_transaction_fields(cls, v, info):
-        # Validate based on transaction type
-        if 'type' in info.data:
-            trans_type = info.data['type']
-            field_name = info.field_name
-
-            if trans_type == TransactionType.expense:
-                if field_name == 'account_from_id' and not v:
-                    raise ValueError('account_from_id is required for expense transactions')
-                if field_name == 'category_id' and not v:
-                    raise ValueError('category_id is required for expense transactions')
-            elif trans_type == TransactionType.income:
-                if field_name == 'account_to_id' and not v:
-                    raise ValueError('account_to_id is required for income transactions')
-                if field_name == 'category_id' and not v:
-                    raise ValueError('category_id is required for income transactions')
-            elif trans_type == TransactionType.transfer:
-                if field_name == 'account_from_id' and not v:
-                    raise ValueError('account_from_id is required for transfer transactions')
-                if field_name == 'account_to_id' and not v:
-                    raise ValueError('account_to_id is required for transfer transactions')
-
-        return v
-
 
 class TransactionCreate(TransactionBase):
     tag_ids: Optional[List[int]] = []

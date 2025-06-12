@@ -4,6 +4,7 @@ class TransactionType(str, Enum):
     expense = "expense"
     income = "income"
     transfer = "transfer"
+    correction = "correction"
 
 class AccountType(str, Enum):
     cash = "cash"

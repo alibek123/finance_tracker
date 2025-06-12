@@ -1241,6 +1241,9 @@
     });
 
     // Make functions globally available for onclick handlers
+    window.handleAdjustBalance = handleAdjustBalance;
+    window.showAdjustBalanceModal = showAdjustBalanceModal;
+    window.adjustBalance = adjustBalance;
     window.showDatePicker = showDatePicker;
     window.setTodayDate = setTodayDate;
     window.changeSelectedDate = changeSelectedDate;
@@ -1971,7 +1974,7 @@
 
     function displayAccounts() {
         const container = document.getElementById('accountsList');
-        container.innerHTML = accounts.map(a => `
+        container.innerHTML = accounts.map((a, index) => `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <div class="fw-semibold">${a.icon || '💳'} ${a.name}</div>
@@ -1980,6 +1983,13 @@
                 <div class="text-end">
                     <div class="fw-semibold">${formatMoney(a.current_balance)}</div>
                     <small class="text-muted">${a.transaction_count || 0} транзакций</small>
+                    <button class="btn btn-sm btn-outline-primary ms-2"
+                            data-account-id="${a.id}"
+                            data-account-index="${index}"
+                            onclick="handleAdjustBalance(this)"
+                            title="Корректировать баланс">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -2776,6 +2786,73 @@
         }
     }
 
+    // Account balance adjustment
+    function handleAdjustBalance(button) {
+        const accountId = parseInt(button.getAttribute('data-account-id'));
+        const accountIndex = parseInt(button.getAttribute('data-account-index'));
+        const account = accounts[accountIndex];
+
+        if (account) {
+            showAdjustBalanceModal(account.id, account.name, account.current_balance);
+        }
+    }
+
+    function showAdjustBalanceModal(accountId, accountName, currentBalance) {
+        const modal = new bootstrap.Modal(document.getElementById('adjustBalanceModal'));
+        document.getElementById('adjustAccountId').value = accountId;
+        document.getElementById('adjustAccountName').value = accountName;
+        document.getElementById('adjustCurrentBalance').value = formatMoney(currentBalance);
+        document.getElementById('adjustNewBalance').value = currentBalance;
+        document.getElementById('adjustDescription').value = '';
+        modal.show();
+    }
+
+    async function adjustBalance() {
+        const accountId = document.getElementById('adjustAccountId').value;
+        const newBalance = parseFloat(document.getElementById('adjustNewBalance').value);
+        const description = document.getElementById('adjustDescription').value;
+
+        if (isNaN(newBalance) || newBalance < 0) {
+            showError('Введите корректную сумму');
+            return;
+        }
+
+        showLoading(true);
+        try {
+            let url = `/accounts/${accountId}/adjust-balance?new_balance=${newBalance}`;
+            if (description) {
+                url += `&description=${encodeURIComponent(description)}`;
+            }
+
+            const response = await fetch(API_URL + url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) throw new Error('API Error');
+
+            const result = await response.json();
+
+            bootstrap.Modal.getInstance(document.getElementById('adjustBalanceModal')).hide();
+            loadAccounts();
+            loadDashboard();
+            loadTransactions();
+
+            if (result.difference && result.difference !== 0) {
+                const changeType = result.difference > 0 ? 'увеличен' : 'уменьшен';
+                showSuccess(`Баланс ${changeType} на ${formatMoney(Math.abs(result.difference))}`);
+            } else {
+                showSuccess('Баланс остался без изменений');
+            }
+        } catch (error) {
+            showError('Ошибка при корректировке баланса');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     // Export/Import functions
     async function exportData(format) {
         const startDate = document.getElementById('filterStartDate').value;
@@ -3015,5 +3092,50 @@
         toast.show();
     }
 </script>
+<!-- Adjust Balance Modal -->
+<div class="modal fade" id="adjustBalanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Корректировать баланс</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adjustBalanceForm">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Будет создана корректирующая транзакция для изменения баланса
+                        счета
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Счет</label>
+                        <input type="text" class="form-control" id="adjustAccountName" readonly>
+                        <input type="hidden" id="adjustAccountId">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Текущий баланс</label>
+                        <input type="text" class="form-control" id="adjustCurrentBalance" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Новый баланс</label>
+                        <input type="number" class="form-control" id="adjustNewBalance" required min="0" step="0.01">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Описание (необязательно)</label>
+                        <input type="text" class="form-control" id="adjustDescription"
+                               placeholder="Причина корректировки">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="adjustBalance()">Корректировать</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>>
