@@ -435,42 +435,119 @@
 
     <!-- Tab Content -->
     <div class="tab-content" id="mainTabContent">
-        <!-- Dashboard Tab -->
+        <!-- Улучшенный дашборд с умной аналитикой -->
         <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
-            <div class="row">
+            <!-- Ключевые метрики (упрощенно, 4 карточки) -->
+            <div class="row mb-4" id="statsRow">
+                <!-- Stats будут загружены здесь -->
+            </div>
+
+            <!-- Быстрые инсайты -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-lightbulb"></i> Умная аналитика
+                            </h5>
+                        </div>
+                        <div class="card-body" id="smartInsights">
+                            <!-- Smart insights будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Главные графики -->
+            <div class="row mb-4">
+                <!-- Тренд расходов за неделю -->
                 <div class="col-lg-8">
                     <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Расходы за последние 30 дней</h5>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Расходы за последние 7 дней</h5>
+                            <span class="badge bg-info" id="weeklySpendingBadge">0 ₸</span>
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
-                                <canvas id="expenseChart"></canvas>
+                                <canvas id="weeklyExpenseChart"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Топ-3 категории -->
                 <div class="col-lg-4">
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0">Топ категорий</h5>
+                            <h5 class="mb-0">Топ категории</h5>
                         </div>
                         <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="categoryChart"></canvas>
+                            <div id="topCategoriesWidget">
+                                <!-- Top categories будут загружены здесь -->
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="row mt-4">
-                <div class="col-12">
+
+            <!-- Анализ паттернов и подписки -->
+            <div class="row mb-4">
+                <!-- Паттерны трат -->
+                <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up-arrow"></i> Паттерны трат
+                            </h5>
+                        </div>
+                        <div class="card-body" id="spendingPatterns">
+                            <!-- Spending patterns будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Подписки -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-arrow-repeat"></i> Подписки и регулярные платежи
+                            </h5>
+                        </div>
+                        <div class="card-body" id="subscriptionsWidget">
+                            <!-- Subscriptions будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Последние транзакции и прогноз -->
+            <div class="row">
+                <!-- Последние транзакции -->
+                <div class="col-lg-7">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Последние транзакции</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="showTab('transactions')">
+                                Все транзакции
+                            </button>
                         </div>
                         <div class="card-body" id="recentTransactions">
                             <!-- Recent transactions will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Умный прогноз -->
+                <div class="col-lg-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-crystal-ball"></i> Прогноз на 3 месяца
+                            </h5>
+                        </div>
+                        <div class="card-body" id="smartForecast">
+                            <!-- Smart forecast будут загружены здесь -->
                         </div>
                     </div>
                 </div>
@@ -656,6 +733,30 @@
                     </div>
                 </div>
             </div>
+
+            <div class="row mt-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Подписки и регулярные платежи</h5>
+                        </div>
+                        <div class="card-body" id="subscriptionsAnalytics">
+                            <!-- Subscriptions analytics будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Паттерны трат</h5>
+                        </div>
+                        <div class="card-body" id="spendingPatternsAnalytics">
+                            <!-- Spending patterns analytics будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Settings Tab -->
@@ -1240,6 +1341,523 @@
         console.log('Initialization complete'); // Отладка
     });
 
+    // Дополнительные функции для улучшенного дашборда
+    let weeklyExpenseChart = null;
+
+    // Загрузка улучшенного дашборда
+    async function loadImprovedDashboard() {
+        showLoading(true);
+        try {
+            // Основные метрики
+            const stats = await fetchAPI('/analytics/dashboard');
+            displayImprovedStats(stats);
+
+            // Умные инсайты
+            await loadSmartInsights();
+
+            // Паттерны трат
+            await loadSpendingPatterns();
+
+            // Подписки
+            await loadSubscriptions();
+
+            // Умный прогноз
+            await loadSmartForecast();
+
+            // Последние транзакции
+            const transactions = await fetchAPI('/transactions?limit=5');
+            displayRecentTransactions(transactions);
+
+            // Обновляем графики
+            await loadWeeklyExpenseChart(stats);
+
+        } catch (error) {
+            showError('Ошибка загрузки дашборда');
+            console.error('Dashboard error:', error);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function displayImprovedStats(stats) {
+        const statsRow = document.getElementById('statsRow');
+
+        // Считаем процент накопления
+        const savingsRate = stats.total_income > 0 ?
+            Math.round((stats.net_savings / stats.total_income) * 100) : 0;
+
+        // Оценка до конца месяца
+        const projectedExpense = stats.projected_monthly_expense || stats.total_expense;
+        const projectedSavings = stats.total_income - projectedExpense;
+
+        statsRow.innerHTML = `
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-primary bg-gradient">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Общий баланс</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_balance || 0)}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-${savingsRate > 20 ? 'success' : savingsRate > 10 ? 'warning' : 'danger'} bg-gradient">
+                            <i class="bi bi-piggy-bank"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Сберегаете</h6>
+                            <h4 class="mb-0">${savingsRate}%</h4>
+                            <small class="text-muted">${formatMoney(stats.net_savings)} в месяц</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-danger bg-gradient">
+                            <i class="bi bi-arrow-down-circle"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Расходы в месяц</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_expense)}</h4>
+                            <small class="text-muted">Прогноз: ${formatMoney(projectedExpense)}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6">
+                <div class="card stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="icon bg-info bg-gradient">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="text-muted mb-1">Доходы в месяц</h6>
+                            <h4 class="mb-0">${formatMoney(stats.total_income)}</h4>
+                            <small class="text-muted">Стабильность</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Обновляем топ категории в правой панели
+        displayTopCategories(stats.category_breakdown);
+    }
+
+    function displayTopCategories(categories) {
+        const container = document.getElementById('topCategoriesWidget');
+
+        if (!categories || categories.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">Нет данных о категориях</p>';
+            return;
+        }
+
+        const total = categories.reduce((sum, cat) => sum + cat.amount, 0);
+
+        container.innerHTML = categories.slice(0, 3).map((cat, index) => {
+            const percentage = total > 0 ? Math.round((cat.amount / total) * 100) : 0;
+            return `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-${index === 0 ? 'danger' : index === 1 ? 'warning' : 'info'} me-2">${index + 1}</span>
+                        <div>
+                            <span style="color: ${cat.color}">${cat.icon || '📁'}</span>
+                            <span class="ms-2">${cat.category_name}</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">${formatMoney(cat.amount)}</div>
+                        <small class="text-muted">${percentage}%</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function loadWeeklyExpenseChart(stats) {
+        if (!stats.daily_expenses || stats.daily_expenses.length === 0) {
+            return;
+        }
+
+        const ctx = document.getElementById('weeklyExpenseChart').getContext('2d');
+        if (weeklyExpenseChart) weeklyExpenseChart.destroy();
+
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
+
+        // Подготавливаем данные для последних 7 дней
+        const labels = stats.daily_expenses.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
+        });
+
+        const amounts = stats.daily_expenses.map(d => d.amount);
+        const totalWeekly = amounts.reduce((sum, amount) => sum + amount, 0);
+
+        // Обновляем badge с общей суммой
+        document.getElementById('weeklySpendingBadge').textContent = formatMoney(totalWeekly);
+
+        weeklyExpenseChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Расходы',
+                    data: amounts,
+                    backgroundColor: amounts.map((amount, index) => {
+                        // Самый большой расход - красный, остальные - градиент
+                        const maxAmount = Math.max(...amounts);
+                        const intensity = amount / maxAmount;
+                        return `rgba(245, 54, 92, ${0.3 + intensity * 0.7})`;
+                    }),
+                    borderColor: '#f5365c',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatMoney(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => formatMoney(value),
+                            color: textColor
+                        },
+                        grid: { color: gridColor }
+                    },
+                    x: {
+                        ticks: { color: textColor },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    async function loadSmartInsights() {
+        try {
+            const [patterns, forecast] = await Promise.all([
+                fetchAPI('/analytics/spending-patterns?days_back=30'),
+                fetchAPI('/analytics/smart-forecast?months_ahead=1')
+            ]);
+
+            displaySmartInsights(patterns, forecast);
+        } catch (error) {
+            console.error('Smart insights error:', error);
+            document.getElementById('smartInsights').innerHTML =
+                '<p class="text-muted">Недостаточно данных для анализа</p>';
+        }
+    }
+
+    function displaySmartInsights(patterns, forecast) {
+        const container = document.getElementById('smartInsights');
+
+        // Находим день с максимальными тратами
+        const maxSpendingDay = patterns.weekday_patterns?.reduce((max, day) =>
+            day.total_amount > max.total_amount ? day : max
+        ) || null;
+
+        // Находим самое активное время
+        const mostActiveTime = patterns.time_patterns?.[0] || null;
+
+        // Анализ риска из прогноза
+        const riskLevel = forecast.analysis?.risk_level || 'unknown';
+        const riskColors = { low: 'success', medium: 'warning', high: 'danger' };
+        const riskTexts = {
+            low: 'Низкий риск',
+            medium: 'Средний риск',
+            high: 'Высокий риск'
+        };
+
+        let insights = [];
+
+        if (maxSpendingDay) {
+            insights.push(`
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="bi bi-calendar-week"></i>
+                    <strong>Больше всего тратите в ${maxSpendingDay.day}</strong> -
+                    в среднем ${formatMoney(maxSpendingDay.avg_amount)} за транзакцию
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+        }
+
+        if (mostActiveTime) {
+            insights.push(`
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="bi bi-clock"></i>
+                    <strong>Самое активное время трат: ${mostActiveTime.period}</strong> -
+                    ${mostActiveTime.transaction_count} транзакций
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+        }
+
+        if (patterns.unusual_expenses?.length > 0) {
+            const maxExpense = patterns.unusual_expenses[0];
+            insights.push(`
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Необычная трата:</strong> ${maxExpense.description} -
+                    ${formatMoney(maxExpense.amount)} (${maxExpense.date})
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+        }
+
+        insights.push(`
+            <div class="alert alert-${riskColors[riskLevel]} alert-dismissible fade show" role="alert">
+                <i class="bi bi-shield-check"></i>
+                <strong>Финансовый риск: ${riskTexts[riskLevel]}</strong>
+                ${forecast.recommendations?.[0] || 'Продолжайте следить за бюджетом'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        container.innerHTML = insights.join('');
+    }
+
+    async function loadSpendingPatterns() {
+        try {
+            const patterns = await fetchAPI('/analytics/spending-patterns?days_back=30');
+            displaySpendingPatterns(patterns);
+        } catch (error) {
+            console.error('Spending patterns error:', error);
+            document.getElementById('spendingPatterns').innerHTML =
+                '<p class="text-muted">Недостаточно данных</p>';
+        }
+    }
+
+    function displaySpendingPatterns(patterns) {
+        const container = document.getElementById('spendingPatterns');
+
+        if (!patterns.weekday_patterns || patterns.weekday_patterns.length === 0) {
+            container.innerHTML = '<p class="text-muted">Недостаточно данных для анализа</p>';
+            return;
+        }
+
+        // Показываем топ-3 дня по тратам
+        const topDays = patterns.weekday_patterns
+            .sort((a, b) => b.total_amount - a.total_amount)
+            .slice(0, 3);
+
+        let html = '<h6 class="mb-3">По дням недели:</h6>';
+
+        topDays.forEach((day, index) => {
+            const badgeClass = index === 0 ? 'danger' : index === 1 ? 'warning' : 'info';
+            html += `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <span class="badge bg-${badgeClass} me-2">${index + 1}</span>
+                        <strong>${day.day}</strong>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">${formatMoney(day.total_amount)}</div>
+                        <small class="text-muted">${day.transaction_count} транзакций</small>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Добавляем анализ по времени
+        if (patterns.time_patterns && patterns.time_patterns.length > 0) {
+            html += '<h6 class="mt-4 mb-3">По времени суток:</h6>';
+            patterns.time_patterns.slice(0, 2).forEach(period => {
+                html += `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>${period.period}</span>
+                        <div class="text-end">
+                            <strong>${formatMoney(period.total_amount)}</strong>
+                            <small class="text-muted d-block">${period.transaction_count} транзакций</small>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        container.innerHTML = html;
+    }
+
+    async function loadSubscriptions() {
+        try {
+            const subscriptions = await fetchAPI('/analytics/subscriptions');
+            displaySubscriptions(subscriptions);
+        } catch (error) {
+            console.error('Subscriptions error:', error);
+            document.getElementById('subscriptionsWidget').innerHTML =
+                '<p class="text-muted">Подписки не обнаружены</p>';
+        }
+    }
+
+    function displaySubscriptions(data) {
+        const container = document.getElementById('subscriptionsWidget');
+
+        if (!data.subscriptions || data.subscriptions.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                    <p class="mt-2">Регулярные платежи не обнаружены</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="mb-3">
+                <small class="text-muted">
+                    Найдено ${data.summary.total_subscriptions} регулярных платежей
+                </small>
+                <div class="fw-bold text-danger">
+                    ~${formatMoney(data.summary.estimated_monthly_cost)} в месяц
+                </div>
+            </div>
+        `;
+
+        // Показываем топ-3 подписки
+        const topSubscriptions = data.subscriptions
+            .filter(s => s.frequency_type === 'monthly')
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 3);
+
+        topSubscriptions.forEach((sub, index) => {
+            html += `
+                <div class="d-flex justify-content-between align-items-center mb-2 ${index < topSubscriptions.length - 1 ? 'pb-2 border-bottom' : ''}">
+                    <div>
+                        <div class="fw-semibold">${sub.description}</div>
+                        <small class="text-muted">
+                            ${sub.category.icon} ${sub.frequency_type} • ${sub.payment_count} платежей
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">${formatMoney(sub.amount)}</div>
+                        <small class="text-muted">/мес</small>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (data.subscriptions.length > 3) {
+            html += `
+                <div class="text-center mt-3">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showTab('analytics')">
+                        Смотреть все подписки
+                    </button>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    async function loadSmartForecast() {
+        try {
+            const forecast = await fetchAPI('/analytics/smart-forecast?months_ahead=3');
+            displaySmartForecast(forecast);
+        } catch (error) {
+            console.error('Smart forecast error:', error);
+            document.getElementById('smartForecast').innerHTML =
+                '<p class="text-muted">Недостаточно данных для прогноза</p>';
+        }
+    }
+
+    function displaySmartForecast(forecast) {
+        const container = document.getElementById('smartForecast');
+
+        if (!forecast.forecast || forecast.forecast.length === 0) {
+            container.innerHTML = '<p class="text-muted">Недостаточно данных для прогноза</p>';
+            return;
+        }
+
+        const analysis = forecast.analysis;
+        const nextMonth = forecast.forecast[0];
+
+        // Цветовое кодирование риска
+        const riskColors = { low: 'success', medium: 'warning', high: 'danger' };
+        const riskColor = riskColors[analysis.risk_level] || 'secondary';
+
+        let html = `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Следующий месяц:</span>
+                    <span class="badge bg-${riskColor}">${analysis.risk_level === 'low' ? 'Низкий риск' : analysis.risk_level === 'medium' ? 'Средний риск' : 'Высокий риск'}</span>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-success">Доходы</small>
+                        <div class="fw-bold">${formatMoney(nextMonth.projected_income)}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-danger">Расходы</small>
+                        <div class="fw-bold">${formatMoney(nextMonth.projected_expense)}</div>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">Ожидаемый баланс:</small>
+                    <div class="fw-bold ${nextMonth.projected_net >= 0 ? 'text-success' : 'text-danger'}">
+                        ${formatMoney(nextMonth.projected_net)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Добавляем тренды
+        if (analysis.expense_trend !== 0 || analysis.income_trend !== 0) {
+            html += '<div class="mt-3">';
+            if (analysis.expense_trend > 0) {
+                html += `<small class="text-danger"><i class="bi bi-arrow-up"></i> Расходы растут на ${formatMoney(Math.abs(analysis.expense_trend))}/мес</small><br>`;
+            } else if (analysis.expense_trend < 0) {
+                html += `<small class="text-success"><i class="bi bi-arrow-down"></i> Расходы снижаются на ${formatMoney(Math.abs(analysis.expense_trend))}/мес</small><br>`;
+            }
+
+            if (analysis.income_trend > 0) {
+                html += `<small class="text-success"><i class="bi bi-arrow-up"></i> Доходы растут на ${formatMoney(Math.abs(analysis.income_trend))}/мес</small>`;
+            } else if (analysis.income_trend < 0) {
+                html += `<small class="text-danger"><i class="bi bi-arrow-down"></i> Доходы снижаются на ${formatMoney(Math.abs(analysis.income_trend))}/мес</small>`;
+            }
+            html += '</div>';
+        }
+
+        // Рекомендации
+        if (forecast.recommendations && forecast.recommendations.length > 0) {
+            html += `
+                <div class="mt-3 p-2 bg-light rounded">
+                    <small class="text-muted"><i class="bi bi-lightbulb"></i> ${forecast.recommendations[0]}</small>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    // Функция для показа определенной вкладки
+    function showTab(tabName) {
+        const tab = document.getElementById(tabName + '-tab');
+        if (tab) {
+            tab.click();
+        }
+    }
+
+
     // Make functions globally available for onclick handlers
     window.handleAdjustBalance = handleAdjustBalance;
     window.showAdjustBalanceModal = showAdjustBalanceModal;
@@ -1249,6 +1867,7 @@
     window.changeSelectedDate = changeSelectedDate;
     window.toggleTheme = toggleTheme;
     window.showAddTransactionModal = showAddTransactionModal;
+    window.loadDashboard = loadImprovedDashboard;
 
     function openDatePicker() {
             const datePicker = document.getElementById('hiddenDatePicker');
@@ -1678,34 +2297,83 @@
             // Load trends
             await loadTrends();
 
-            // Load category analytics
-            const categoryAnalytics = await fetchAPI('/analytics/categories?transaction_type=expense');
-            displayCategoryAnalytics(categoryAnalytics);
-
-            // Load forecast - try detailed first, then simple
+            // Load category analytics - используем исправленный эндпоинт
             try {
-                const forecast = await fetchAPI('/analytics/forecast/detailed?months_ahead=3');
+                const categoryAnalytics = await fetchAPI('/analytics/categories?transaction_type=expense');
+                displayCategoryAnalytics(categoryAnalytics);
+            } catch (error) {
+                console.error('Category analytics error:', error);
+                document.getElementById('categoryAnalytics').innerHTML =
+                    '<p class="text-muted">Ошибка загрузки аналитики категорий</p>';
+            }
+
+            // Load forecast - улучшенная версия
+            try {
+                const forecast = await fetchAPI('/analytics/smart-forecast?months_ahead=3');
                 displayForecast(forecast);
             } catch (error) {
-                // If detailed forecast fails, try simple forecast
-                const simpleForecast = await fetchAPI('/analytics/forecast?months_ahead=3');
-                displayForecast(simpleForecast);
+                console.error('Forecast error:', error);
+                // Fallback к простому прогнозу если умный не работает
+                try {
+                    const simpleForecast = await fetchAPI('/analytics/forecast?months_ahead=3');
+                    displayForecast(simpleForecast);
+                } catch (fallbackError) {
+                    console.error('Simple forecast error:', fallbackError);
+                    document.getElementById('forecastContent').innerHTML =
+                        '<p class="text-muted">Недостаточно данных для прогноза</p>';
+                }
             }
 
             // Load monthly comparison
-            const monthlyComparison = await fetchAPI('/analytics/monthly-comparison?months_back=3');
-            displayMonthlyComparison(monthlyComparison);
+            try {
+                const monthlyComparison = await fetchAPI('/analytics/monthly-comparison?months_back=3');
+                displayMonthlyComparison(monthlyComparison);
+            } catch (error) {
+                console.error('Monthly comparison error:', error);
+                document.getElementById('monthlyComparisonContent').innerHTML =
+                    '<p class="text-muted">Ошибка загрузки сравнения по месяцам</p>';
+            }
 
             // Load account balances
-            const accountBalances = await fetchAPI('/analytics/account-balances');
-            displayAccountBalances(accountBalances);
+            try {
+                const accountBalances = await fetchAPI('/analytics/account-balances');
+                displayAccountBalances(accountBalances);
+            } catch (error) {
+                console.error('Account balances error:', error);
+                document.getElementById('accountBalanceChart').getContext('2d').canvas.style.display = 'none';
+            }
 
             // Load top expenses
-            const topExpenses = await fetchAPI('/analytics/top-expenses?limit=10&days=30');
-            displayTopExpenses(topExpenses);
+            try {
+                const topExpenses = await fetchAPI('/analytics/top-expenses?limit=10&days=30');
+                displayTopExpenses(topExpenses);
+            } catch (error) {
+                console.error('Top expenses error:', error);
+                document.getElementById('topExpensesContent').innerHTML =
+                    '<p class="text-muted">Ошибка загрузки топ расходов</p>';
+            }
+
+            // Load subscriptions (новая функция)
+            try {
+                const subscriptions = await fetchAPI('/analytics/subscriptions');
+                displaySubscriptionsAnalytics(subscriptions);
+            } catch (error) {
+                console.error('Subscriptions error:', error);
+                // Не критично если подписки не загружаются
+            }
+
+            // Load spending patterns (новая функция)
+            try {
+                const patterns = await fetchAPI('/analytics/spending-patterns?days_back=60');
+                displaySpendingPatternsAnalytics(patterns);
+            } catch (error) {
+                console.error('Spending patterns error:', error);
+                // Не критично если паттерны не загружаются
+            }
 
         } catch (error) {
             showError('Ошибка загрузки аналитики');
+            console.error('Analytics error:', error);
         } finally {
             showLoading(false);
         }
